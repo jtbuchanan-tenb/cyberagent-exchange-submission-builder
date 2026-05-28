@@ -15,12 +15,10 @@ A Claude Code skill (`/cyberagents-exchange-submit`) that automates the process 
 cyberagents-exchange-submit/
 ├── SKILL.md                          # Main flow orchestrator
 └── references/
-    ├── agent-template.md             # Agent listing template + field guide
-    ├── playbook-template.md          # Playbook listing template + field guide
     └── submission-checklist.md       # Pre-submission validation rules
 ```
 
-Integrations and types/categories are fetched live from the exchange founders repo at runtime (not stored as static reference files).
+Templates (`agent-template.md`, `playbook-template.md`), integrations, and types are all fetched live from the exchange founders repo at runtime. This ensures the skill always uses the latest versions without requiring skill updates when templates change.
 
 ## Target Repositories
 
@@ -69,6 +67,13 @@ This field answers "what form does this take?" — topical classification lives 
 ---
 
 ## Phase 2: Interview & Generate Listing
+
+**First action:** Fetch the latest templates and controlled vocabularies from the founders repo:
+- `templates/agent-template.md` or `templates/playbook-template.md` (based on type selection)
+- `data/integrations.json` (valid integrations list)
+- `data/types.json` (valid types with descriptions; fallback to `data/categories.json`)
+
+These are always fetched fresh to ensure the skill uses the most current versions.
 
 ### Step 2.1 — License validation
 
@@ -136,11 +141,13 @@ This field answers "what form does this take?" — topical classification lives 
 ### Step 3.2 — Verify exchange repo access
 
 - `gh api repos/tenable-cyberagents-exchange/exchange-founders-prelaunch-agents` to test access.
-- On 404/403: explain this is a private repo, provide contacts:
-  - Justin Buchanan — @jtbuchanan-tenb
-  - Patrick Ramseier — @pramseier-tenb
-  - DJ Zito
-- Pause and wait for user to confirm they have access before continuing.
+- On 404/403:
+  1. First, check if this is an EMU account issue: run `gh api user --jq '.login'` and inspect the username. EMU accounts typically follow `<enterprise>_<username>` pattern (e.g., `tenable_jbuchanan`). If EMU detected, explain: "You're currently authenticated as an Enterprise Managed User account. EMU accounts can't access external repositories. You need to switch to a personal GitHub account."  Guide them through `gh auth login` with their personal account.
+  2. If not an EMU issue: explain this is a private repo that requires collaborator access. Provide contacts:
+     - Justin Buchanan — @jtbuchanan-tenb
+     - Patrick Ramseier — @pramseier-tenb
+     - DJ Zito
+  3. Pause and wait for user to confirm they have access before continuing.
 
 ### Step 3.3 — Fork the exchange repo
 

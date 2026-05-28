@@ -9,7 +9,7 @@ Guide the user through submitting their agent or playbook to the Tenable CyberAg
 
 The exchange content repo is: `tenable-cyberagents-exchange/exchange-founders-prelaunch-agents`
 
-Always confirm with the user before any git commit, push, fork, or PR creation.
+Always confirm with the user before any git commit, push, or PR creation.
 
 ---
 
@@ -64,10 +64,10 @@ If this fails, the repo either doesn't exist on GitHub yet or isn't pushed. Guid
 
 ### Step 1.4 — Check account type (EMU detection)
 
-Inspect the owner from the remote URL. EMU (Enterprise Managed User) accounts typically follow the pattern `<enterprise>_<username>` (e.g., `tenable_jbuchanan`).
+Inspect the owner from the remote URL. EMU (Enterprise Managed User) accounts follow the pattern `<enterprise>_<username>` with an **underscore** (e.g., `tenable_jbuchanan`). Hyphens in usernames (e.g., `jtbuchanan-tenb`) are normal personal accounts — do NOT flag these.
 
-If the owner contains an underscore and looks like an EMU pattern, warn:
-> "It looks like this repo is under an Enterprise Managed User account (`<owner>`). EMU accounts cannot fork external repositories, which is required to submit to the Exchange. You'll need to push this repo to a personal GitHub account instead."
+Only if the owner contains an underscore separating what looks like an org prefix from a username, warn:
+> "It looks like this repo is under an Enterprise Managed User account (`<owner>`). EMU accounts cannot access the Exchange content repository. You'll need to push this repo to a personal GitHub account instead."
 
 Ask: "Do you have a personal GitHub account? If so, what's the username? I can help you add it as a remote and push."
 
@@ -309,7 +309,7 @@ gh auth status
 ```
 
 If not authenticated, tell the user:
-> "The GitHub CLI isn't authenticated. I need it to fork the exchange repo and create a PR. Let's log in:"
+> "The GitHub CLI isn't authenticated. I need it to clone the exchange repo and create a PR. Let's log in:"
 > ```
 > gh auth login
 > ```
@@ -329,9 +329,9 @@ First, check if this is an EMU account issue:
 gh api user --jq '.login'
 ```
 
-Inspect the returned username. If it matches the pattern `<company>_<name>` (e.g., `tenable_jbuchanan`), it's an EMU account. Tell the user:
+Inspect the returned username. If it contains an **underscore** separating an org prefix from a username (e.g., `tenable_jbuchanan`), it's an EMU account. Hyphens are normal — do NOT flag those. Tell the user:
 
-> "You're currently authenticated as `<username>`, which appears to be an Enterprise Managed User (EMU) account. EMU accounts cannot access or fork repositories outside their enterprise. You need to switch to a personal GitHub account.
+> "You're currently authenticated as `<username>`, which appears to be an Enterprise Managed User (EMU) account. EMU accounts cannot access repositories outside their enterprise. You need to switch to a personal GitHub account.
 >
 > Do you have a personal GitHub account? If so, what's the username? I can help you switch."
 
@@ -356,35 +356,13 @@ If they don't have a personal account, direct them to github.com/signup to creat
 
 Pause and wait for the user to confirm before continuing.
 
-### Step 3.3 — Fork the exchange repo
+### Step 3.3 — Clone the exchange repo and prepare branch
 
-Check if the user already has a fork:
+Clone the exchange repo directly to a temporary directory (no forking required — contributors have push access):
 ```bash
-gh api repos/<username>/exchange-founders-prelaunch-agents --jq '.full_name' 2>/dev/null
-```
-
-If no fork exists, **confirm before git action:**
-> "I need to fork the exchange content repo to your GitHub account. This creates `<username>/exchange-founders-prelaunch-agents`. Proceed?"
-
-```bash
-gh repo fork tenable-cyberagents-exchange/exchange-founders-prelaunch-agents --clone=false
-```
-
-### Step 3.4 — Clone fork and prepare branch
-
-Clone the fork to a temporary directory:
-```bash
-FORK_DIR=$(mktemp -d)
-gh repo clone <username>/exchange-founders-prelaunch-agents "$FORK_DIR"
-cd "$FORK_DIR"
-```
-
-Ensure the fork is up to date with upstream:
-```bash
-git remote add upstream https://github.com/tenable-cyberagents-exchange/exchange-founders-prelaunch-agents.git 2>/dev/null
-git fetch upstream
-git checkout main
-git merge upstream/main
+CLONE_DIR=$(mktemp -d)
+gh repo clone tenable-cyberagents-exchange/exchange-founders-prelaunch-agents "$CLONE_DIR"
+cd "$CLONE_DIR"
 ```
 
 Create a branch for the submission:
@@ -394,7 +372,7 @@ git checkout -b add-<slug>
 
 Where `<slug>` is the same slug used for the listing filename.
 
-### Step 3.5 — Place listing file
+### Step 3.4 — Place listing file
 
 Determine the target directory:
 - If type is `agent`, `skill`, `tool`, or `mcp-server` → place in `agents/`
@@ -412,12 +390,12 @@ Copy the listing file:
 cp <path-to-listing-in-agent-repo>/<slug>.md <target-directory>/<slug>.md
 ```
 
-### Step 3.6 — Commit, push, and create PR
+### Step 3.5 — Commit, push, and create PR
 
 **Confirm before git action:**
 > "Ready to submit your listing to the CyberAgents Exchange. This will:"
-> 1. Commit `<target-directory>/<slug>.md` to your fork
-> 2. Push to GitHub
+> 1. Commit `<target-directory>/<slug>.md` to your branch
+> 2. Push the branch to GitHub
 > 3. Open a pull request to the exchange repo
 >
 > "Proceed?"
@@ -448,7 +426,7 @@ gh pr create \
 - [x] Filename is a valid slug (<slug>.md)"
 ```
 
-### Step 3.7 — Report success
+### Step 3.6 — Report success
 
 After the PR is created, tell the user:
 > "Your listing has been submitted! Here's your pull request:"
@@ -458,7 +436,7 @@ After the PR is created, tell the user:
 >
 > If you need to make changes, you can push additional commits to your `add-<slug>` branch and the PR will update automatically."
 
-Clean up the temporary fork clone:
+Clean up the temporary clone:
 ```bash
-rm -rf "$FORK_DIR"
+rm -rf "$CLONE_DIR"
 ```

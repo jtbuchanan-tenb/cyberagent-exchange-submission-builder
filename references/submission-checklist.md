@@ -6,7 +6,7 @@ Run through each section before submitting. Every item must pass.
 - [ ] CWD (or user-specified path) is a git repository
 - [ ] Git remote points to a GitHub URL
 - [ ] Remote is reachable (gh repo view succeeds)
-- [ ] GitHub account is personal (not EMU — username does NOT match `<org>_<name>` pattern)
+- [ ] GitHub account is personal (not EMU — username does NOT match `<org>_<name>` underscore pattern; hyphens are fine)
 - [ ] README file exists at repo root (README.md, README.rst, or README)
 - [ ] LICENSE file exists at repo root (LICENSE, LICENSE.md, LICENSE.txt, or COPYING)
 

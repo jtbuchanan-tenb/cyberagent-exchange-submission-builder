@@ -297,3 +297,168 @@ git add <slug>.md
 git commit -m "Add CyberAgents Exchange listing"
 git push
 ```
+
+---
+
+## Phase 3: Submit to the Exchange
+
+### Step 3.1 — Verify GitHub CLI authentication
+
+```bash
+gh auth status
+```
+
+If not authenticated, tell the user:
+> "The GitHub CLI isn't authenticated. I need it to fork the exchange repo and create a PR. Let's log in:"
+> ```
+> gh auth login
+> ```
+> "This will open a browser for authentication. Follow the prompts to log in with your **personal** GitHub account (not an EMU/corporate account)."
+
+### Step 3.2 — Verify exchange repo access
+
+Test access to the content repository:
+```bash
+gh api repos/tenable-cyberagents-exchange/exchange-founders-prelaunch-agents --jq '.full_name'
+```
+
+**If this fails (404 or 403):**
+
+First, check if this is an EMU account issue:
+```bash
+gh api user --jq '.login'
+```
+
+Inspect the returned username. If it matches the pattern `<company>_<name>` (e.g., `tenable_jbuchanan`), it's an EMU account. Tell the user:
+
+> "You're currently authenticated as `<username>`, which appears to be an Enterprise Managed User (EMU) account. EMU accounts cannot access or fork repositories outside their enterprise. You need to switch to a personal GitHub account.
+>
+> Do you have a personal GitHub account? If so, what's the username? I can help you switch."
+
+If they provide a personal username, run:
+```bash
+gh auth login
+```
+Walk them through the browser auth flow. After login, re-run the access check.
+
+If they don't have a personal account, direct them to github.com/signup to create one.
+
+**If not an EMU issue** (username looks normal but access denied):
+
+> "You don't currently have access to the exchange content repository (`tenable-cyberagents-exchange/exchange-founders-prelaunch-agents`). This is a private repo — you need to be added as a collaborator.
+>
+> Contact one of these people to request access:
+> - **Justin Buchanan** — [@jtbuchanan-tenb](https://github.com/jtbuchanan-tenb)
+> - **Patrick Ramseier** — [@pramseier-tenb](https://github.com/pramseier-tenb)
+> - **DJ Zito**
+>
+> Once you've been added and accepted the invitation, let me know and I'll continue."
+
+Pause and wait for the user to confirm before continuing.
+
+### Step 3.3 — Fork the exchange repo
+
+Check if the user already has a fork:
+```bash
+gh api repos/<username>/exchange-founders-prelaunch-agents --jq '.full_name' 2>/dev/null
+```
+
+If no fork exists, **confirm before git action:**
+> "I need to fork the exchange content repo to your GitHub account. This creates `<username>/exchange-founders-prelaunch-agents`. Proceed?"
+
+```bash
+gh repo fork tenable-cyberagents-exchange/exchange-founders-prelaunch-agents --clone=false
+```
+
+### Step 3.4 — Clone fork and prepare branch
+
+Clone the fork to a temporary directory:
+```bash
+FORK_DIR=$(mktemp -d)
+gh repo clone <username>/exchange-founders-prelaunch-agents "$FORK_DIR"
+cd "$FORK_DIR"
+```
+
+Ensure the fork is up to date with upstream:
+```bash
+git remote add upstream https://github.com/tenable-cyberagents-exchange/exchange-founders-prelaunch-agents.git 2>/dev/null
+git fetch upstream
+git checkout main
+git merge upstream/main
+```
+
+Create a branch for the submission:
+```bash
+git checkout -b add-<slug>
+```
+
+Where `<slug>` is the same slug used for the listing filename.
+
+### Step 3.5 — Place listing file
+
+Determine the target directory:
+- If type is `agent`, `skill`, `tool`, or `mcp-server` → place in `agents/`
+- If type is playbook → place in `playbooks/`
+
+Check for filename conflicts:
+```bash
+ls agents/<slug>.md 2>/dev/null || ls playbooks/<slug>.md 2>/dev/null
+```
+
+If a conflict exists, inform the user and ask them to choose a different name.
+
+Copy the listing file:
+```bash
+cp <path-to-listing-in-agent-repo>/<slug>.md <target-directory>/<slug>.md
+```
+
+### Step 3.6 — Commit, push, and create PR
+
+**Confirm before git action:**
+> "Ready to submit your listing to the CyberAgents Exchange. This will:"
+> 1. Commit `<target-directory>/<slug>.md` to your fork
+> 2. Push to GitHub
+> 3. Open a pull request to the exchange repo
+>
+> "Proceed?"
+
+```bash
+git add <target-directory>/<slug>.md
+git commit -m "Add listing: <Agent Name>"
+git push -u origin add-<slug>
+```
+
+Create the pull request:
+```bash
+gh pr create \
+  --repo tenable-cyberagents-exchange/exchange-founders-prelaunch-agents \
+  --title "Add listing: <Agent Name>" \
+  --body "## New Listing: <Agent Name>
+
+**Repository:** <github_url>
+**Type:** <type>
+**Description:** <description>
+
+### Checklist
+- [x] Agent/playbook code is in a personal GitHub repo
+- [x] Repo has a README
+- [x] Repo has an open source license (<license>)
+- [x] Listing file passes schema validation
+- [x] Listing placed in correct directory (<target-directory>/)
+- [x] Filename is a valid slug (<slug>.md)"
+```
+
+### Step 3.7 — Report success
+
+After the PR is created, tell the user:
+> "Your listing has been submitted! Here's your pull request:"
+> **<PR URL>**
+>
+> "A maintainer will review and merge it. Once merged, your listing will appear on the CyberAgents Exchange on the next deploy.
+>
+> If you need to make changes, you can push additional commits to your `add-<slug>` branch and the PR will update automatically."
+
+Clean up the temporary fork clone:
+```bash
+rm -rf "$FORK_DIR"
+```

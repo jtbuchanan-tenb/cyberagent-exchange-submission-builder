@@ -146,7 +146,7 @@ These are always fetched fresh to ensure the skill uses the most current version
      - Explain: "You're currently authenticated as an Enterprise Managed User account (`<detected-username>`). EMU accounts can't access or fork external repositories. You need to switch to a personal GitHub account."
      - Ask: "Do you have a personal GitHub account? If so, what's the username?"
      - If they provide a username, offer to run the switch for them: `gh auth login` targeting their personal account. Walk them through the browser auth flow that will open.
-     - If they don't have a personal account, guide them to create one at github.com/signup. Suggest the `yourname-tenb` naming convention (e.g., `jbuchanan-tenb`) used by other Tenable contributors.
+     - If they don't have a personal account, guide them to create one at github.com/signup.
      - After switching, re-verify access to the exchange repo before continuing.
   2. If not an EMU issue: explain this is a private repo that requires collaborator access. Provide contacts:
      - Justin Buchanan — @jtbuchanan-tenb

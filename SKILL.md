@@ -95,8 +95,11 @@ gh api repos/tenable-cyberagents-exchange/exchange-founders-prelaunch-agents/con
 Store these results for validation throughout Phase 2. You'll also need the appropriate template later — fetch it after the user selects their type:
 
 ```bash
-# For agents/skills/tools/mcp-servers:
+# For agents/skills/tools:
 gh api repos/tenable-cyberagents-exchange/exchange-founders-prelaunch-agents/contents/templates/agent-template.md --jq '.content' | base64 -d
+
+# For MCP servers:
+gh api repos/tenable-cyberagents-exchange/exchange-founders-prelaunch-agents/contents/templates/mcp-server-template.md --jq '.content' | base64 -d
 
 # For playbooks:
 gh api repos/tenable-cyberagents-exchange/exchange-founders-prelaunch-agents/contents/templates/playbook-template.md --jq '.content' | base64 -d
@@ -146,16 +149,16 @@ If the repo has a `package.json` without a `license` field, suggest:
 Ask the user:
 > "What type of listing are you submitting?"
 
-Present the types fetched from the founders repo with their descriptions. If the fetched data is the new object format (with `id` and `description` fields), show each option with its description. If it's the old flat array, show just the values:
+Present the types fetched from the founders repo with their descriptions, plus `mcp-server` (which is now its own collection). If the fetched data is the new object format (with `id` and `description` fields), show each option with its description. If it's the old flat array, show just the values:
 
 > - **agent** — A standalone autonomous AI system with its own runtime and control loop
 > - **skill** — An agent skill file (SKILL.md) that extends AI coding assistants
 > - **tool** — A CLI tool, library, script, or standalone utility
 > - **mcp-server** — A Model Context Protocol server exposing data sources or actions
 
-Validate their selection against the fetched list.
+Validate their selection: `agent`, `skill`, and `tool` must match the fetched types.json list. `mcp-server` is always valid (it's a separate collection now). `playbook` is also always valid.
 
-After type selection, fetch the appropriate template (agent-template.md for agent/skill/tool/mcp-server, playbook-template.md for playbooks).
+After type selection, fetch the appropriate template (agent-template.md for agent/skill/tool, mcp-server-template.md for mcp-server, playbook-template.md for playbooks).
 
 ### Step 2.3 — Auto-detected fields
 
@@ -205,6 +208,87 @@ Confirm: "I'm guessing the framework is `<detected>`. Is that right?"
 
 If the user types an integration that's not in the list, fuzzy-match against valid values (e.g., "crowdstrike" → "CrowdStrike", "sentinelone" → "SentinelOne") and suggest the correction.
 
+### Step 2.4-MCP — MCP-specific fields (only for `mcp-server` type)
+
+When the user selects `mcp-server` as their type, run auto-detection for all MCP-specific fields before asking questions.
+
+#### Detection scan
+
+Run these checks against the user's repo:
+
+```bash
+# Detect runtime
+ls package.json tsconfig.json bun.lockb bunfig.toml pyproject.toml setup.py requirements.txt Pipfile Cargo.toml go.mod 2>/dev/null
+
+# Detect transport patterns
+grep -r "StdioServerTransport\|stdio_server\|SSEServerTransport\|StreamableHTTPServerTransport" --include="*.py" --include="*.ts" --include="*.js" -l 2>/dev/null
+
+# Detect MCP tool/resource/prompt definitions
+grep -rn "server\.tool\|@server\.tool\|server\.resource\|@server\.resource\|server\.prompt\|@server\.prompt" --include="*.py" --include="*.ts" --include="*.js" 2>/dev/null
+
+# Check README for client mentions
+grep -i "claude desktop\|claude code\|cursor\|windsurf\|copilot\|cline\|continue" README* readme* 2>/dev/null
+```
+
+#### Detection rules
+
+**Runtime** (high confidence):
+- `package.json` or `tsconfig.json` → node
+- `bun.lockb` or `bunfig.toml` → bun
+- `pyproject.toml`, `setup.py`, `requirements.txt`, `Pipfile` → python
+- `Cargo.toml` → rust
+- `go.mod` → go
+- None of the above → binary
+
+**Transport** (medium-high confidence):
+- `StdioServerTransport` or `stdio_server` found → stdio
+- `SSEServerTransport` or `StreamableHTTPServerTransport` found → http
+- Both patterns found, or README mentions both modes → both
+- If nothing detected but README has Claude Desktop JSON config example → stdio
+
+**Auth method** (medium confidence):
+- No auth middleware or env vars for keys/tokens on the MCP server itself → none
+- OAuth patterns, `/authorize` endpoint, token refresh logic → oauth2
+- Bearer token validation on MCP endpoint → token
+- README mentions "set your API key" for the MCP connection → api_key
+- If only upstream-service API keys found → ask user to clarify
+
+**Compatible clients** (from README + transport inference):
+- README contains `mcpServers` JSON block → include "Claude Desktop"
+- README mentions specific clients by name → include those
+- Transport is stdio → suggest Claude Desktop, Claude Code, Cursor
+- Transport is http → suggest Claude Desktop, Claude Code
+
+**Tools/resources/prompts** (high confidence):
+- Parse `server.tool("name", "description", ...)` patterns (TypeScript)
+- Parse `@server.tool()` decorated functions (Python) — name from function name, description from docstring
+- Parse `server.resource(...)` / `@server.resource(...)` similarly
+- Parse `server.prompt(...)` / `@server.prompt(...)` similarly
+
+#### Present findings
+
+After running detection, present all findings in a single summary for user confirmation:
+
+> "Based on your repo, I've detected:"
+> - **Runtime:** <value> (<reason>)
+> - **Transport:** <value> (<reason>)
+> - **Auth method:** <value> (<reason>)
+> - **Compatible clients:** <values>
+> - **Tools (<count>):** <name1>, <name2>, ...
+> - **Resources (<count>):** <names or "none detected">
+> - **Prompts (<count>):** <names or "none detected">
+>
+> "Does this look right? Anything to add or correct?"
+
+For any field that couldn't be detected, ask the user directly. Validate all values against the fetched controlled vocabularies:
+
+```bash
+gh api repos/tenable-cyberagents-exchange/exchange-founders-prelaunch-agents/contents/data/transports.json --jq '.content' | base64 -d
+gh api repos/tenable-cyberagents-exchange/exchange-founders-prelaunch-agents/contents/data/runtimes.json --jq '.content' | base64 -d
+gh api repos/tenable-cyberagents-exchange/exchange-founders-prelaunch-agents/contents/data/auth-methods.json --jq '.content' | base64 -d
+gh api repos/tenable-cyberagents-exchange/exchange-founders-prelaunch-agents/contents/data/clients.json --jq '.content' | base64 -d
+```
+
 ### Step 2.5 — Playbook-specific: `agents_used` chain
 
 Only if the type is a playbook listing. Ask:
@@ -249,6 +333,32 @@ tags: [<tags>]
 framework: "<framework>"
 integrations: [<integrations>]
 date_added: <YYYY-MM-DD>
+---
+
+<body content>
+```
+
+For MCP servers:
+```yaml
+---
+name: "<name>"
+author: "<author>"
+github_url: "<url>"
+description: "<description>"
+license: "<spdx-id>"
+tier: "unreviewed"
+tags: [<tags>]
+integrations: [<integrations>]
+date_added: <YYYY-MM-DD>
+transport: "<transport>"
+runtime: "<runtime>"
+auth_method: "<auth_method>"
+compatible_clients: [<clients>]
+tools_exposed:
+  - name: "<name>"
+    description: "<description>"
+resources_exposed: []
+prompts_exposed: []
 ---
 
 <body content>
@@ -375,12 +485,13 @@ Where `<slug>` is the same slug used for the listing filename.
 ### Step 3.4 — Place listing file
 
 Determine the target directory:
-- If type is `agent`, `skill`, `tool`, or `mcp-server` → place in `agents/`
+- If type is `agent`, `skill`, or `tool` → place in `agents/`
+- If type is `mcp-server` → place in `mcp-servers/`
 - If type is playbook → place in `playbooks/`
 
 Check for filename conflicts:
 ```bash
-ls agents/<slug>.md 2>/dev/null || ls playbooks/<slug>.md 2>/dev/null
+ls agents/<slug>.md mcp-servers/<slug>.md playbooks/<slug>.md 2>/dev/null
 ```
 
 If a conflict exists, inform the user and ask them to choose a different name.

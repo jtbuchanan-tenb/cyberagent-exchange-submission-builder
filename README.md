@@ -1,6 +1,6 @@
 # CyberAgents Exchange Submit
 
-A Claude Code skill that walks you through submitting your cybersecurity AI agent or playbook to the [Tenable CyberAgents Exchange](https://exchange.tenable.com).
+A Claude Code skill that walks you through submitting your cybersecurity AI agent, MCP server, or playbook to the [Tenable CyberAgents Exchange](https://exchange.tenable.com).
 
 ## What This Does
 

@@ -2,9 +2,9 @@
 name: "CyberAgents Exchange Submit"
 author: "jtbuchanan-tenb"
 github_url: "https://github.com/jtbuchanan-tenb/cyberagent-exchange-submission-builder"
-description: "A Claude Code skill that guides you through submitting agents and playbooks to the Tenable CyberAgents Exchange"
+description: "A Claude Code skill that guides you through submitting agents, MCP servers, and playbooks to the Tenable CyberAgents Exchange"
 license: "MIT"
-category: "skill"
+type: "skill"
 tier: "unreviewed"
 tags: ["claude-code", "exchange", "submission", "automation", "cybersecurity"]
 framework: "Claude Code SKILL"
@@ -12,7 +12,7 @@ integrations: ["Anthropic"]
 date_added: 2026-05-28
 ---
 
-A Claude Code skill that automates the entire process of submitting your cybersecurity agent, tool, or playbook to the Tenable CyberAgents Exchange.
+A Claude Code skill that automates the entire process of submitting your cybersecurity agent, MCP server, or playbook to the Tenable CyberAgents Exchange.
 
 ## What it does
 

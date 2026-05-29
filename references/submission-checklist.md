@@ -41,9 +41,20 @@ Required fields — all must be present and valid:
   - `ref` — required for `exchange` (slug) and `github` (URL); optional for `info`
 - [ ] `date_added` — today's date in YYYY-MM-DD format
 
+## Listing Frontmatter (MCP Server)
+Required fields — all must be present and valid:
+- [ ] All common fields (name, author, github_url, description, license, tier, tags, integrations, date_added)
+- [ ] `transport` — validated against `data/transports.json`
+- [ ] `runtime` — validated against `data/runtimes.json`
+- [ ] `auth_method` — validated against `data/auth-methods.json`
+- [ ] `compatible_clients` — array, each validated against `data/clients.json`
+- [ ] `tools_exposed` — array of {name, description} objects (can be empty)
+- [ ] `resources_exposed` — array of {name, description} objects (can be empty)
+- [ ] `prompts_exposed` — array of {name, description} objects (can be empty)
+
 ## Exchange Submission
 - [ ] `gh` CLI is authenticated (`gh auth status` succeeds)
 - [ ] Authenticated user can access `tenable-cyberagents-exchange/exchange-founders-prelaunch-agents`
 - [ ] Listing filename is a valid slug (lowercase, hyphens, no spaces, no special chars)
-- [ ] No filename conflict with existing files in target directory (`agents/` or `playbooks/`)
+- [ ] No filename conflict with existing files in target directory (`agents/`, `mcp-servers/`, or `playbooks/`)
 - [ ] PR title follows format: `"Add listing: <Agent Name>"`

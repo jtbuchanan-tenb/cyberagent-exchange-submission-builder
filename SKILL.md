@@ -95,8 +95,11 @@ gh api repos/tenable-cyberagents-exchange/exchange-founders-prelaunch-agents/con
 Store these results for validation throughout Phase 2. You'll also need the appropriate template later — fetch it after the user selects their type:
 
 ```bash
-# For agents/skills/tools:
+# For agents/tools:
 gh api repos/tenable-cyberagents-exchange/exchange-founders-prelaunch-agents/contents/templates/agent-template.md --jq '.content' | base64 -d
+
+# For skills:
+gh api repos/tenable-cyberagents-exchange/exchange-founders-prelaunch-agents/contents/templates/skill-template.md --jq '.content' | base64 -d
 
 # For MCP servers:
 gh api repos/tenable-cyberagents-exchange/exchange-founders-prelaunch-agents/contents/templates/mcp-server-template.md --jq '.content' | base64 -d
@@ -152,13 +155,13 @@ Ask the user:
 Present the types fetched from the founders repo with their descriptions, plus `mcp-server` (which is now its own collection). If the fetched data is the new object format (with `id` and `description` fields), show each option with its description. If it's the old flat array, show just the values:
 
 > - **agent** — A standalone autonomous AI system with its own runtime and control loop
-> - **skill** — An agent skill file (SKILL.md) that extends AI coding assistants
+> - **skill** — An agent skill file (SKILL.md) that extends AI coding assistants (goes to `skills/` directory)
 > - **tool** — A CLI tool, library, script, or standalone utility
 > - **mcp-server** — A Model Context Protocol server exposing data sources or actions
 
 Validate their selection: `agent`, `skill`, and `tool` must match the fetched types.json list. `mcp-server` is always valid (it's a separate collection now). `playbook` is also always valid.
 
-After type selection, fetch the appropriate template (agent-template.md for agent/skill/tool, mcp-server-template.md for mcp-server, playbook-template.md for playbooks).
+After type selection, fetch the appropriate template (agent-template.md for agent/tool, skill-template.md for skill, mcp-server-template.md for mcp-server, playbook-template.md for playbooks).
 
 ### Step 2.3 — Auto-detected fields
 
@@ -338,6 +341,25 @@ date_added: <YYYY-MM-DD>
 <body content>
 ```
 
+For skills:
+```yaml
+---
+name: "<name>"
+author: "<author>"
+github_url: "<url>"
+description: "<description>"
+license: "<spdx-id>"
+tier: "unreviewed"
+tags: [<tags>]
+integrations: [<integrations>]
+date_added: <YYYY-MM-DD>
+compatible_platforms: [<platforms>]
+invocation: "<invocation>"
+---
+
+<body content>
+```
+
 For MCP servers:
 ```yaml
 ---
@@ -485,7 +507,8 @@ Where `<slug>` is the same slug used for the listing filename.
 ### Step 3.4 — Place listing file
 
 Determine the target directory:
-- If type is `agent`, `skill`, or `tool` → place in `agents/`
+- If type is `agent` or `tool` → place in `agents/`
+- If type is `skill` → place in `skills/`
 - If type is `mcp-server` → place in `mcp-servers/`
 - If type is playbook → place in `playbooks/`
 

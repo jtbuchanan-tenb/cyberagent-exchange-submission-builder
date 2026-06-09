@@ -1,11 +1,11 @@
 ---
 name: cyberagents-exchange-submit
-description: "Submit an agent, playbook, or MCP server to the Tenable CyberAgents Exchange. Use when a user wants to list their cybersecurity AI agent or workflow on the Tenable Exchange (exchange.tenable.com), verify their repo meets requirements, generate listing metadata, and open a pull request to the exchange content repository. Triggers on: submit to exchange, Tenable CyberAgents Exchange, Exchange Tenable, list my agent, publish to exchange."
+description: "Submit an agent, skill, MCP server, or playbook to the Tenable CyberAgents Exchange. Use when a user wants to list their cybersecurity AI agent, skill, or workflow on the Tenable Exchange (exchange.tenable.com), verify their repo meets requirements, generate listing metadata, and open a pull request to the exchange content repository. Triggers on: submit to exchange, Tenable CyberAgents Exchange, Exchange Tenable, list my agent, list my skill, publish to exchange."
 ---
 
 # CyberAgents Exchange Submission
 
-Guide the user through submitting their agent or playbook to the Tenable CyberAgents Exchange. This is a multi-phase process: validate their repo, generate a listing file, and submit a PR to the exchange content repository.
+Guide the user through submitting their agent, skill, MCP server, or playbook to the Tenable CyberAgents Exchange. This is a multi-phase process: validate their repo, generate a listing file, and submit a PR to the exchange content repository.
 
 The exchange content repo is: `tenable-cyberagents-exchange/exchange-founders-prelaunch-agents`
 

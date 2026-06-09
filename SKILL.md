@@ -211,6 +211,69 @@ Confirm: "I'm guessing the framework is `<detected>`. Is that right?"
 
 If the user types an integration that's not in the list, fuzzy-match against valid values (e.g., "crowdstrike" → "CrowdStrike", "sentinelone" → "SentinelOne") and suggest the correction.
 
+### Step 2.4-SKILL — Skill-specific fields (only for `skill` type)
+
+When the user selects `skill` as their type, run auto-detection for skill-specific fields before asking questions.
+
+#### Detection scan
+
+Run these checks against the user's repo:
+
+```bash
+# Detect compatible platforms
+ls SKILL.md .cursor/rules .cursorrules .github/copilot-instructions.md .windsurfrules GEMINI.md AGENTS.md codex.json 2>/dev/null
+ls -d .gemini .cline .clinerules 2>/dev/null
+```
+
+#### Platform detection rules
+
+| Signal | Platform |
+|--------|----------|
+| `SKILL.md` at repo root | Claude Code |
+| `.cursor/rules` or `.cursorrules` file | Cursor |
+| `.github/copilot-instructions.md` | GitHub Copilot |
+| `.windsurfrules` file | Windsurf |
+| `GEMINI.md` or `.gemini/` directory | Gemini CLI |
+| `AGENTS.md` or `codex.json` | Codex |
+| `.clinerules` or `.cline/` directory | Cline |
+
+#### Invocation detection
+
+Check for the invocation/trigger name:
+
+```bash
+# Check SKILL.md frontmatter for name field
+head -20 SKILL.md 2>/dev/null | grep -i "^name:"
+```
+
+| Signal | Inference |
+|--------|-----------|
+| SKILL.md frontmatter has `name:` field | Use that as invocation (prepend `/` if not present) |
+| README mentions a slash command (e.g., `/something`) | Extract it |
+| No signal | Ask user directly |
+
+#### Fetch live platforms vocabulary
+
+```bash
+gh api repos/tenable-cyberagents-exchange/exchange-founders-prelaunch-agents/contents/data/platforms.json --jq '.content' | base64 -d
+```
+
+Validate detected platforms against this list.
+
+#### Present findings
+
+After running detection, present findings for user confirmation:
+
+> "Based on your repo, I've detected:"
+> - **Compatible platforms:** <values> (<reasons>)
+> - **Invocation:** <value> (<reason>)
+>
+> "Does this look right? Anything to add or correct?"
+
+For any field that couldn't be detected, ask the user directly. For platforms, show the full list of valid options from the fetched vocabulary.
+
+Note: Skills do NOT have a `framework` field — skip the framework detection from Step 2.4 for skill types.
+
 ### Step 2.4-MCP — MCP-specific fields (only for `mcp-server` type)
 
 When the user selects `mcp-server` as their type, run auto-detection for all MCP-specific fields before asking questions.

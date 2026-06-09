@@ -24,6 +24,12 @@ Required fields — all must be present and valid:
 - [ ] `integrations` — array, each value validated against live `data/integrations.json` from founders repo
 - [ ] `date_added` — today's date in YYYY-MM-DD format
 
+## Listing Frontmatter (Skill)
+Required fields — all must be present and valid:
+- [ ] All common fields (name, author, github_url, description, license, tier, tags, integrations, date_added)
+- [ ] `compatible_platforms` — array, each validated against `data/platforms.json`
+- [ ] `invocation` — string, the command/trigger name
+
 ## Listing Frontmatter (Playbook)
 Required fields — all must be present and valid:
 - [ ] `name` — non-empty string
@@ -56,5 +62,5 @@ Required fields — all must be present and valid:
 - [ ] `gh` CLI is authenticated (`gh auth status` succeeds)
 - [ ] Authenticated user can access `tenable-cyberagents-exchange/exchange-founders-prelaunch-agents`
 - [ ] Listing filename is a valid slug (lowercase, hyphens, no spaces, no special chars)
-- [ ] No filename conflict with existing files in target directory (`agents/`, `mcp-servers/`, or `playbooks/`)
+- [ ] No filename conflict with existing files in target directory (`agents/`, `mcp-servers/`, `playbooks/`, or `skills/`)
 - [ ] PR title follows format: `"Add listing: <Agent Name>"`

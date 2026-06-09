@@ -1,11 +1,11 @@
 ---
 name: cyberagents-exchange-submit
-description: "Submit an agent, playbook, or MCP server to the Tenable CyberAgents Exchange. Use when a user wants to list their cybersecurity AI agent or workflow on the Tenable Exchange (exchange.tenable.com), verify their repo meets requirements, generate listing metadata, and open a pull request to the exchange content repository. Triggers on: submit to exchange, Tenable CyberAgents Exchange, Exchange Tenable, list my agent, publish to exchange."
+description: "Submit an agent, skill, MCP server, or playbook to the Tenable CyberAgents Exchange. Use when a user wants to list their cybersecurity AI agent, skill, or workflow on the Tenable Exchange (exchange.tenable.com), verify their repo meets requirements, generate listing metadata, and open a pull request to the exchange content repository. Triggers on: submit to exchange, Tenable CyberAgents Exchange, Exchange Tenable, list my agent, list my skill, publish to exchange."
 ---
 
 # CyberAgents Exchange Submission
 
-Guide the user through submitting their agent or playbook to the Tenable CyberAgents Exchange. This is a multi-phase process: validate their repo, generate a listing file, and submit a PR to the exchange content repository.
+Guide the user through submitting their agent, skill, MCP server, or playbook to the Tenable CyberAgents Exchange. This is a multi-phase process: validate their repo, generate a listing file, and submit a PR to the exchange content repository.
 
 The exchange content repo is: `tenable-cyberagents-exchange/exchange-founders-prelaunch-agents`
 
@@ -95,8 +95,11 @@ gh api repos/tenable-cyberagents-exchange/exchange-founders-prelaunch-agents/con
 Store these results for validation throughout Phase 2. You'll also need the appropriate template later — fetch it after the user selects their type:
 
 ```bash
-# For agents/skills/tools:
+# For agents/tools:
 gh api repos/tenable-cyberagents-exchange/exchange-founders-prelaunch-agents/contents/templates/agent-template.md --jq '.content' | base64 -d
+
+# For skills:
+gh api repos/tenable-cyberagents-exchange/exchange-founders-prelaunch-agents/contents/templates/skill-template.md --jq '.content' | base64 -d
 
 # For MCP servers:
 gh api repos/tenable-cyberagents-exchange/exchange-founders-prelaunch-agents/contents/templates/mcp-server-template.md --jq '.content' | base64 -d
@@ -152,13 +155,13 @@ Ask the user:
 Present the types fetched from the founders repo with their descriptions, plus `mcp-server` (which is now its own collection). If the fetched data is the new object format (with `id` and `description` fields), show each option with its description. If it's the old flat array, show just the values:
 
 > - **agent** — A standalone autonomous AI system with its own runtime and control loop
-> - **skill** — An agent skill file (SKILL.md) that extends AI coding assistants
+> - **skill** — An agent skill file (SKILL.md) that extends AI coding assistants (goes to `skills/` directory)
 > - **tool** — A CLI tool, library, script, or standalone utility
 > - **mcp-server** — A Model Context Protocol server exposing data sources or actions
 
 Validate their selection: `agent`, `skill`, and `tool` must match the fetched types.json list. `mcp-server` is always valid (it's a separate collection now). `playbook` is also always valid.
 
-After type selection, fetch the appropriate template (agent-template.md for agent/skill/tool, mcp-server-template.md for mcp-server, playbook-template.md for playbooks).
+After type selection, fetch the appropriate template (agent-template.md for agent/tool, skill-template.md for skill, mcp-server-template.md for mcp-server, playbook-template.md for playbooks).
 
 ### Step 2.3 — Auto-detected fields
 
@@ -207,6 +210,69 @@ Confirm: "I'm guessing the framework is `<detected>`. Is that right?"
 > "Based on your code, I think these integrations apply: `[<suggested>]`. Here's the full list of valid integrations: `[<all valid>]`. Want to add or remove any?"
 
 If the user types an integration that's not in the list, fuzzy-match against valid values (e.g., "crowdstrike" → "CrowdStrike", "sentinelone" → "SentinelOne") and suggest the correction.
+
+### Step 2.4-SKILL — Skill-specific fields (only for `skill` type)
+
+When the user selects `skill` as their type, run auto-detection for skill-specific fields before asking questions.
+
+#### Detection scan
+
+Run these checks against the user's repo:
+
+```bash
+# Detect compatible platforms
+ls SKILL.md .cursor/rules .cursorrules .github/copilot-instructions.md .windsurfrules GEMINI.md AGENTS.md codex.json 2>/dev/null
+ls -d .gemini .cline .clinerules 2>/dev/null
+```
+
+#### Platform detection rules
+
+| Signal | Platform |
+|--------|----------|
+| `SKILL.md` at repo root | Claude Code |
+| `.cursor/rules` or `.cursorrules` file | Cursor |
+| `.github/copilot-instructions.md` | GitHub Copilot |
+| `.windsurfrules` file | Windsurf |
+| `GEMINI.md` or `.gemini/` directory | Gemini CLI |
+| `AGENTS.md` or `codex.json` | Codex |
+| `.clinerules` or `.cline/` directory | Cline |
+
+#### Invocation detection
+
+Check for the invocation/trigger name:
+
+```bash
+# Check SKILL.md frontmatter for name field
+head -20 SKILL.md 2>/dev/null | grep -i "^name:"
+```
+
+| Signal | Inference |
+|--------|-----------|
+| SKILL.md frontmatter has `name:` field | Use that as invocation (prepend `/` if not present) |
+| README mentions a slash command (e.g., `/something`) | Extract it |
+| No signal | Ask user directly |
+
+#### Fetch live platforms vocabulary
+
+```bash
+gh api repos/tenable-cyberagents-exchange/exchange-founders-prelaunch-agents/contents/data/platforms.json --jq '.content' | base64 -d
+```
+
+Validate detected platforms against this list.
+
+#### Present findings
+
+After running detection, present findings for user confirmation:
+
+> "Based on your repo, I've detected:"
+> - **Compatible platforms:** <values> (<reasons>)
+> - **Invocation:** <value> (<reason>)
+>
+> "Does this look right? Anything to add or correct?"
+
+For any field that couldn't be detected, ask the user directly. For platforms, show the full list of valid options from the fetched vocabulary.
+
+Note: Skills do NOT have a `framework` field — skip the framework detection from Step 2.4 for skill types.
 
 ### Step 2.4-MCP — MCP-specific fields (only for `mcp-server` type)
 
@@ -333,6 +399,25 @@ tags: [<tags>]
 framework: "<framework>"
 integrations: [<integrations>]
 date_added: <YYYY-MM-DD>
+---
+
+<body content>
+```
+
+For skills:
+```yaml
+---
+name: "<name>"
+author: "<author>"
+github_url: "<url>"
+description: "<description>"
+license: "<spdx-id>"
+tier: "unreviewed"
+tags: [<tags>]
+integrations: [<integrations>]
+date_added: <YYYY-MM-DD>
+compatible_platforms: [<platforms>]
+invocation: "<invocation>"
 ---
 
 <body content>
@@ -485,7 +570,8 @@ Where `<slug>` is the same slug used for the listing filename.
 ### Step 3.4 — Place listing file
 
 Determine the target directory:
-- If type is `agent`, `skill`, or `tool` → place in `agents/`
+- If type is `agent` or `tool` → place in `agents/`
+- If type is `skill` → place in `skills/`
 - If type is `mcp-server` → place in `mcp-servers/`
 - If type is playbook → place in `playbooks/`
 

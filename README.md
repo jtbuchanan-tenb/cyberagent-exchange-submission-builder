@@ -6,7 +6,7 @@ A Claude Code skill that walks you through submitting your cybersecurity AI agen
 
 Instead of manually following the Exchange contribution guide — cloning repos, filling out templates, validating fields — this skill handles it all interactively. Run one command and it will:
 
-1. **Validate your repo** — checks that your agent code is pushed to GitHub, has a README, and has an open source license
+1. **Validate your repo** — checks that your agent code is pushed to a public GitHub repo, has a README, has an open source license, and scans for accidentally committed secrets
 2. **Generate your listing** — interviews you about your agent, auto-detects what it can from your code, and assembles the listing metadata file
 3. **Submit your pull request** — clones the Exchange content repo, creates a branch, places your listing, and opens a PR for review
 
@@ -48,7 +48,7 @@ Before running the skill, make sure you have:
 
 - **[Claude Code](https://docs.anthropic.com/en/docs/claude-code)** installed
 - **[GitHub CLI (`gh`)](https://cli.github.com/)** installed and authenticated (`gh auth login`)
-- **Your agent/playbook code** pushed to a GitHub repository under your personal account
+- **Your agent/playbook code** pushed to a **public** GitHub repository under your personal account
 - **Access to the Exchange content repo** — contact Justin Buchanan ([@jtbuchanan-tenb](https://github.com/jtbuchanan-tenb)), Patrick Ramseier ([@pramseier-tenb](https://github.com/pramseier-tenb)), or DJ Zito to be added as a collaborator
 
 > **Note:** If you're a Tenable employee, you'll need to use a personal GitHub account (not your corporate EMU account) to submit listings. The skill will detect this and help you switch if needed.
@@ -82,6 +82,8 @@ The skill auto-detects as much as possible from your repo, but will ask you abou
 - **Integrations** — Which platforms it works with (e.g., Tenable, CrowdStrike, Splunk)
 
 For playbooks, you'll also describe the agent chain — which agents/steps are involved and how they connect.
+
+If your listing needs a value that isn't in the Exchange's current vocabulary (e.g., a new integration vendor), the skill will add it to the validator for you and include the update in your submission PR.
 
 ## Supported Listing Types
 

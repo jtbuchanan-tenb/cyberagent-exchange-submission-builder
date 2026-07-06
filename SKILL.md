@@ -49,11 +49,11 @@ git remote get-url origin
 
 Parse the owner and repo name from the URL. Handle both SSH (`git@github.com:owner/repo.git`) and HTTPS (`https://github.com/owner/repo`) formats.
 
-### Step 1.3 — Verify pushed to GitHub
+### Step 1.3 — Verify pushed to GitHub and public
 
 Confirm the remote repo exists and is accessible:
 ```bash
-gh repo view <owner>/<repo> --json name,url
+gh repo view <owner>/<repo> --json name,url,visibility
 ```
 
 If this fails, the repo either doesn't exist on GitHub yet or isn't pushed. Guide the user:
@@ -62,7 +62,48 @@ If this fails, the repo either doesn't exist on GitHub yet or isn't pushed. Guid
 > git push -u origin main
 > ```
 
-### Step 1.4 — Check account type (EMU detection)
+If the repo is **private** (visibility is not "PUBLIC"), warn the user:
+> "Your repo is currently private. The CyberAgents Exchange requires all listed projects to be in public repositories so that users can access and evaluate your work.
+>
+> You can make it public in your repo settings, or I can do it for you:"
+> ```
+> gh repo edit <owner>/<repo> --visibility public
+> ```
+> "Would you like me to make it public now, or would you prefer to do it yourself?"
+
+**Do not proceed past Phase 1 until the repo is public.** Re-check after the user confirms.
+
+### Step 1.4 — Scan for secrets
+
+Before proceeding, scan the repo for accidentally committed secrets:
+
+```bash
+# Check for common secret file patterns
+ls .env .env.local .env.production .env.* credentials.json service-account*.json *secret* *token* 2>/dev/null
+
+# Search for hardcoded secrets in source files
+grep -rn --include="*.py" --include="*.ts" --include="*.js" --include="*.go" --include="*.rs" --include="*.yaml" --include="*.yml" --include="*.toml" --include="*.json" -E '(api[_-]?key|api[_-]?secret|auth[_-]?token|access[_-]?token|secret[_-]?key|private[_-]?key|password)\s*[:=]\s*["\x27][A-Za-z0-9+/=_-]{16,}' . 2>/dev/null | grep -v node_modules | grep -v .venv | grep -v __pycache__
+
+# Check for AWS/cloud credential patterns
+grep -rn --include="*.py" --include="*.ts" --include="*.js" --include="*.go" --include="*.env*" -E '(AKIA[0-9A-Z]{16}|sk-[a-zA-Z0-9]{20,}|ghp_[a-zA-Z0-9]{36}|gho_[a-zA-Z0-9]{36}|xox[bpas]-[a-zA-Z0-9-]+)' . 2>/dev/null | grep -v node_modules | grep -v .venv
+```
+
+**If any matches are found**, report them to the user:
+> "I found what appear to be secrets or credentials in your repository:"
+> - `<file>:<line>` — <description of what was found>
+>
+> "Since this repo needs to be public for the Exchange, these should be removed before proceeding. Common fixes:"
+> - Move secrets to environment variables and add the files to `.gitignore`
+> - Use `git filter-branch` or [BFG Repo-Cleaner](https://reclaimtheweb.com/bfg-repo-cleaner/) to purge them from git history
+> - Rotate any exposed credentials immediately
+>
+> "Would you like help resolving these?"
+
+**Do not proceed past Phase 1 until the user has addressed the findings or confirmed they are false positives** (e.g., example/placeholder values, test fixtures).
+
+If no matches are found, continue silently.
+
+### Step 1.5 — Check account type (EMU detection)
 
 Inspect the owner from the remote URL. EMU (Enterprise Managed User) accounts follow the pattern `<enterprise>_<username>` with an **underscore** (e.g., `tenable_jbuchanan`). Hyphens in usernames (e.g., `jtbuchanan-tenb`) are normal personal accounts — do NOT flag these.
 
@@ -81,16 +122,22 @@ After any account switch, re-run the validation from Step 1.2.
 
 ### First: Fetch live data from the exchange repo
 
-Before starting the interview, fetch the latest controlled vocabularies and templates:
+Before starting the interview, fetch the validator to extract controlled vocabularies:
 
 ```bash
-# Fetch valid integrations
-gh api repos/tenable-cyberagents-exchange/exchange-founders-prelaunch-agents/contents/data/integrations.json --jq '.content' | base64 -d
-
-# Fetch valid types (fallback to categories.json if types.json doesn't exist yet)
-gh api repos/tenable-cyberagents-exchange/exchange-founders-prelaunch-agents/contents/data/types.json --jq '.content' | base64 -d 2>/dev/null || \
-gh api repos/tenable-cyberagents-exchange/exchange-founders-prelaunch-agents/contents/data/categories.json --jq '.content' | base64 -d
+# Fetch the validator which contains all controlled vocabularies as Literal types
+gh api repos/tenable-cyberagents-exchange/exchange-founders-prelaunch-agents/contents/validator.py --jq '.content' | base64 -d
 ```
+
+Parse the Pydantic models in `validator.py` to extract valid values from `Literal[...]` type annotations:
+- **Integrations** — from `Entry.integrations` field's Literal values
+- **Types** — from `Agent.type` field's Literal values (e.g., "agent", "tool", "mcp-server")
+- **Tiers** — from `Entry.tier` field's Literal values
+- **Platforms** — from `Skill.compatible_platforms` field's Literal values
+- **Transports** — from `MCPServer.transport` field's Literal values
+- **Runtimes** — from `MCPServer.runtime` field's Literal values
+- **Auth methods** — from `MCPServer.auth_method` field's Literal values
+- **Clients** — from `MCPServer.compatible_clients` field's Literal values
 
 Store these results for validation throughout Phase 2. You'll also need the appropriate template later — fetch it after the user selects their type:
 
@@ -159,7 +206,7 @@ Present the types fetched from the founders repo with their descriptions, plus `
 > - **tool** — A CLI tool, library, script, or standalone utility
 > - **mcp-server** — A Model Context Protocol server exposing data sources or actions
 
-Validate their selection: `agent`, `skill`, and `tool` must match the fetched types.json list. `mcp-server` is always valid (it's a separate collection now). `playbook` is also always valid.
+Validate their selection: `agent`, `skill`, and `tool` must match the `Agent.type` Literal values from the validator. `mcp-server` is always valid (it's a separate collection now). `playbook` is also always valid.
 
 After type selection, fetch the appropriate template (agent-template.md for agent/tool, skill-template.md for skill, mcp-server-template.md for mcp-server, playbook-template.md for playbooks).
 
@@ -206,10 +253,17 @@ For these fields, read the repo context (README, code structure, imports, depend
 
 Confirm: "I'm guessing the framework is `<detected>`. Is that right?"
 
-**`integrations`** — Search the README and code for references to known platforms. Cross-reference with the fetched `integrations.json` list. Suggest matches and show the full list of valid options:
+**`integrations`** — Search the README and code for references to known platforms. Cross-reference with the integrations list parsed from the validator. Suggest matches and show the full list of valid options:
 > "Based on your code, I think these integrations apply: `[<suggested>]`. Here's the full list of valid integrations: `[<all valid>]`. Want to add or remove any?"
 
 If the user types an integration that's not in the list, fuzzy-match against valid values (e.g., "crowdstrike" → "CrowdStrike", "sentinelone" → "SentinelOne") and suggest the correction.
+
+If no fuzzy match is found and the user confirms the value is correct (e.g., a new vendor not yet in the vocabulary), inform them:
+> "That value isn't in the current controlled vocabulary. I can include an update to `validator.py` in your submission PR to add it — the maintainers will review the vocabulary addition alongside your listing. Want me to do that?"
+
+If the user agrees, track the new value and which field it belongs to. In Phase 3 (Step 3.4), the skill will apply these vocabulary updates to `validator.py` in the exchange repo clone before committing.
+
+This same handling applies to any controlled vocabulary field (platforms, clients, runtimes, transports, auth methods) where the user needs a value that doesn't yet exist.
 
 ### Step 2.4-SKILL — Skill-specific fields (only for `skill` type)
 
@@ -252,13 +306,9 @@ head -20 SKILL.md 2>/dev/null | grep -i "^name:"
 | README mentions a slash command (e.g., `/something`) | Extract it |
 | No signal | Ask user directly |
 
-#### Fetch live platforms vocabulary
+#### Validate platforms
 
-```bash
-gh api repos/tenable-cyberagents-exchange/exchange-founders-prelaunch-agents/contents/data/platforms.json --jq '.content' | base64 -d
-```
-
-Validate detected platforms against this list.
+Validate detected platforms against the `Skill.compatible_platforms` Literal values parsed from the validator in Phase 2's initial fetch.
 
 #### Present findings
 
@@ -316,7 +366,7 @@ grep -i "claude desktop\|claude code\|cursor\|windsurf\|copilot\|cline\|continue
 - No auth middleware or env vars for keys/tokens on the MCP server itself → none
 - OAuth patterns, `/authorize` endpoint, token refresh logic → oauth2
 - Bearer token validation on MCP endpoint → token
-- README mentions "set your API key" for the MCP connection → api_key
+- README mentions "set your API key" for the MCP connection → api-key
 - If only upstream-service API keys found → ask user to clarify
 
 **Compatible clients** (from README + transport inference):
@@ -346,14 +396,7 @@ After running detection, present all findings in a single summary for user confi
 >
 > "Does this look right? Anything to add or correct?"
 
-For any field that couldn't be detected, ask the user directly. Validate all values against the fetched controlled vocabularies:
-
-```bash
-gh api repos/tenable-cyberagents-exchange/exchange-founders-prelaunch-agents/contents/data/transports.json --jq '.content' | base64 -d
-gh api repos/tenable-cyberagents-exchange/exchange-founders-prelaunch-agents/contents/data/runtimes.json --jq '.content' | base64 -d
-gh api repos/tenable-cyberagents-exchange/exchange-founders-prelaunch-agents/contents/data/auth-methods.json --jq '.content' | base64 -d
-gh api repos/tenable-cyberagents-exchange/exchange-founders-prelaunch-agents/contents/data/clients.json --jq '.content' | base64 -d
-```
+For any field that couldn't be detected, ask the user directly. Validate all values against the controlled vocabularies parsed from the validator in Phase 2's initial fetch (transports from `MCPServer.transport`, runtimes from `MCPServer.runtime`, auth methods from `MCPServer.auth_method`, clients from `MCPServer.compatible_clients`).
 
 ### Step 2.5 — Playbook-specific: `agents_used` chain
 
@@ -437,7 +480,7 @@ integrations: [<integrations>]
 date_added: <YYYY-MM-DD>
 transport: "<transport>"
 runtime: "<runtime>"
-auth_method: "<auth_method>"
+auth_method: "<auth-method>"
 compatible_clients: [<clients>]
 tools_exposed:
   - name: "<name>"
@@ -587,7 +630,26 @@ Copy the listing file:
 cp <path-to-listing-in-agent-repo>/<slug>.md <target-directory>/<slug>.md
 ```
 
-### Step 3.5 — Commit, push, and create PR
+### Step 3.5 — Update validator vocabulary (if needed)
+
+If the user requested new vocabulary values during Phase 2, apply them now to `validator.py` in the exchange repo clone:
+
+1. Open `validator.py` and locate the appropriate `Literal[...]` type annotation for each new value:
+   - Integrations → `Entry.integrations` field
+   - Platforms → `Skill.compatible_platforms` field
+   - Clients → `MCPServer.compatible_clients` field
+   - Transports → `MCPServer.transport` field
+   - Runtimes → `MCPServer.runtime` field
+   - Auth methods → `MCPServer.auth_method` field
+
+2. Insert the new value into the Literal list in alphabetical order, maintaining the existing formatting (one value per line, with trailing comma).
+
+3. Inform the user:
+   > "I've added `<value>` to the `<field>` vocabulary in `validator.py`. The maintainers will review this alongside your listing."
+
+If no vocabulary updates are needed, skip this step.
+
+### Step 3.6 — Commit, push, and create PR
 
 **Confirm before git action:**
 > "Ready to submit your listing to the CyberAgents Exchange. This will:"
@@ -597,13 +659,21 @@ cp <path-to-listing-in-agent-repo>/<slug>.md <target-directory>/<slug>.md
 >
 > "Proceed?"
 
+If vocabulary updates were made, include both files in the commit:
+```bash
+git add <target-directory>/<slug>.md validator.py
+git commit -m "Add listing: <Agent Name>"
+git push -u origin add-<slug>
+```
+
+Otherwise:
 ```bash
 git add <target-directory>/<slug>.md
 git commit -m "Add listing: <Agent Name>"
 git push -u origin add-<slug>
 ```
 
-Create the pull request:
+Create the pull request. If vocabulary updates were included, mention them in the PR body:
 ```bash
 gh pr create \
   --repo tenable-cyberagents-exchange/exchange-founders-prelaunch-agents \
@@ -620,10 +690,15 @@ gh pr create \
 - [x] Repo has an open source license (<license>)
 - [x] Listing file passes schema validation
 - [x] Listing placed in correct directory (<target-directory>/)
-- [x] Filename is a valid slug (<slug>.md)"
+- [x] Filename is a valid slug (<slug>.md)
+
+### Vocabulary Updates (if applicable)
+- Added `<value>` to `<field>` in `validator.py`"
 ```
 
-### Step 3.6 — Report success
+Omit the "Vocabulary Updates" section from the PR body if no vocabulary changes were made.
+
+### Step 3.7 — Report success
 
 After the PR is created, tell the user:
 > "Your listing has been submitted! Here's your pull request:"

@@ -208,7 +208,26 @@ Present the types fetched from the founders repo with their descriptions, plus `
 
 Validate their selection: `agent`, `skill`, and `tool` must match the `Agent.type` Literal values from the validator. `mcp-server` is always valid (it's a separate collection now). `playbook` is also always valid.
 
-After type selection, fetch the appropriate template (agent-template.md for agent/tool, skill-template.md for skill, mcp-server-template.md for mcp-server, playbook-template.md for playbooks).
+After type selection, fetch the appropriate template (agent-template.md for agent/tool, skill-template.md for skill, mcp-server-template.md for mcp-server, playbook-template.md or n8n-playbook-template.md for playbooks).
+
+### Step 2.2b — Playbook subtype selection (only for playbooks)
+
+If the user selected "playbook" in Step 2.2, ask:
+> "What type of playbook is this?"
+> - **standard** — A multi-agent orchestration you've designed (requires listing the agents in the chain)
+> - **sponsored** — A vendor-partnered playbook with co-branding (requires a logo URL and may include vendor-type agent references)
+> - **n8n** — An n8n workflow with a `workflow.json` file in your repo (generates a visual workflow diagram)
+
+Store the selection as `playbook_subtype`. This determines which template to fetch and which fields to collect.
+
+Fetch the appropriate template:
+```bash
+# For standard/sponsored:
+gh api repos/tenable-cyberagents-exchange/exchange-founders-prelaunch-agents/contents/templates/playbook-template.md --jq '.content' | base64 -d
+
+# For n8n:
+gh api repos/tenable-cyberagents-exchange/exchange-founders-prelaunch-agents/contents/templates/n8n-playbook-template.md --jq '.content' | base64 -d
+```
 
 ### Step 2.3 — Auto-detected fields
 
@@ -398,16 +417,104 @@ After running detection, present all findings in a single summary for user confi
 
 For any field that couldn't be detected, ask the user directly. Validate all values against the controlled vocabularies parsed from the validator in Phase 2's initial fetch (transports from `MCPServer.transport`, runtimes from `MCPServer.runtime`, auth methods from `MCPServer.auth_method`, clients from `MCPServer.compatible_clients`).
 
+### Step 2.4-PLAYBOOK-SPONSORED — Sponsored playbook fields (only for `sponsored` subtype)
+
+When the user selected `sponsored` as their playbook subtype:
+
+#### Logo URL
+
+Ask:
+> "What's the URL to your company/product logo? This will appear in the co-brand banner on the Exchange.
+>
+> Best practice: use a raw.githubusercontent.com URL from your repo (e.g., `https://raw.githubusercontent.com/your-username/your-repo/main/logo.png`).
+>
+> Requirements: publicly accessible image URL, PNG or SVG recommended, will display at max 80px height."
+
+Validate the URL is reachable:
+```bash
+curl -sI "<logo_url>" | head -5
+```
+
+If the URL returns a non-200 status, warn the user and ask them to fix it.
+
+### Step 2.4-PLAYBOOK-N8N — n8n workflow fields (only for `n8n` subtype)
+
+When the user selected `n8n` as their playbook subtype:
+
+#### Workflow detection and diagram generation
+
+Scan the repo for n8n workflow files:
+```bash
+find . -name "*.json" -not -path "*/node_modules/*" -not -path "*/.git/*" | head -20
+```
+
+For each JSON file found, check if it's an n8n workflow:
+```bash
+cat <file> | python3 -c "import json,sys; d=json.load(sys.stdin); assert 'nodes' in d and isinstance(d['nodes'], list) and len(d['nodes']) > 0 and 'type' in d['nodes'][0]" 2>/dev/null && echo "n8n workflow: <file>"
+```
+
+**If a workflow file is found:**
+
+Read and parse it to generate a high-level Mermaid diagram:
+
+1. Identify trigger node(s) — nodes with type containing "trigger" or "schedule" or "webhook"
+2. Follow the `connections` object to trace the main execution path
+3. Group adjacent nodes by logical purpose:
+   - Multiple HTTP requests to the same domain → one step
+   - Code nodes that transform data → group with their output
+   - Sub-workflow calls → single "Process" step
+4. Name each step descriptively based on node `name` field (clean up n8n's default names)
+5. Cap at 4-7 nodes for readability
+6. Choose direction: `flowchart LR` for linear flows (≤1 branch point), `flowchart TD` for workflows with parallel branches
+
+Present the generated diagram:
+> "I've analyzed your workflow and generated this visualization:"
+> ```
+> flowchart LR
+>   A[...] --> B[...]
+>   ...
+> ```
+> "Does this accurately represent your workflow? Feel free to edit the node labels or structure."
+
+**If no workflow file is found:**
+> "I didn't find an n8n workflow JSON file in your repo. You can either:
+> 1. Point me to the file path if it's named differently
+> 2. Write the Mermaid diagram manually (I'll help with the syntax)
+>
+> The diagram should show 4-7 high-level steps of your workflow using `flowchart LR` or `flowchart TD` syntax."
+
+#### agents_used (optional for n8n)
+
+After the diagram is confirmed, ask:
+> "Does your workflow integrate with any agents or services listed on the CyberAgents Exchange? If so, I can add cross-references. If it's self-contained (just calling external APIs directly), we can skip this.
+>
+> Note: only sponsored playbooks can reference vendor-type agents."
+
+If the user wants to add agents, collect them one at a time (same flow as Step 2.5 for standard playbooks, but limited to `exchange`, `github`, and `info` types — reject `vendor` with an explanation).
+
 ### Step 2.5 — Playbook-specific: `agents_used` chain
 
-Only if the type is a playbook listing. Ask:
+Only if the type is a playbook listing.
+
+**For `standard` subtype:** (required)
+Ask:
 > "Walk me through the agents or steps in this playbook workflow. For each one, I'll need:
 > 1. **Name** — what to call this agent/step
 > 2. **Role** — what it does in the chain (one sentence)
 > 3. **Type** — is it listed on the CyberAgents Exchange (`exchange`), on GitHub (`github`), or just an informational/manual step (`info`)?
 > 4. **Ref** — the exchange slug, GitHub URL, or leave blank for info steps"
+>
+> Note: `vendor` type is only available for sponsored playbooks.
 
 Collect each agent one at a time. After each, ask "Any more agents in the chain, or is that the complete workflow?"
+
+**For `sponsored` subtype:** (required)
+Same flow as standard, but additionally:
+> "Does this playbook include any vendor-specific proprietary components? If so, I'll mark them as `vendor` type with a link to the vendor's documentation."
+
+Allow `type: "vendor"` entries for sponsored playbooks.
+
+**For `n8n` subtype:** Handled in Step 2.4-PLAYBOOK-N8N (optional, skip here).
 
 Present the full chain for review:
 > "Here's your agent chain:"
@@ -492,9 +599,10 @@ prompts_exposed: []
 <body content>
 ```
 
-For playbooks:
+For standard playbooks:
 ```yaml
 ---
+playbook_type: "standard"
 name: "<name>"
 author: "<author>"
 github_url: "<url>"
@@ -508,6 +616,50 @@ agents_used:
     role: "<role>"
     type: "<type>"
     ref: "<ref>"
+date_added: <YYYY-MM-DD>
+---
+
+<body content>
+```
+
+For sponsored playbooks:
+```yaml
+---
+playbook_type: "sponsored"
+name: "<name>"
+author: "<author>"
+github_url: "<url>"
+description: "<description>"
+license: "<spdx-id>"
+tier: "unreviewed"
+tags: [<tags>]
+integrations: [<integrations>]
+agents_used:
+  - name: "<name>"
+    role: "<role>"
+    type: "<type>"
+    ref: "<ref>"
+logo: "<logo_url>"
+date_added: <YYYY-MM-DD>
+---
+
+<body content>
+```
+
+For n8n playbooks:
+```yaml
+---
+playbook_type: "n8n"
+name: "<name>"
+author: "<author>"
+github_url: "<url>"
+description: "<description>"
+license: "<spdx-id>"
+tier: "unreviewed"
+tags: [<tags>]
+integrations: [<integrations>]
+workflow_diagram: |
+  <mermaid source>
 date_added: <YYYY-MM-DD>
 ---
 

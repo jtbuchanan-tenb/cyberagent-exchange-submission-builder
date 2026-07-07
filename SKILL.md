@@ -122,11 +122,14 @@ After any account switch, re-run the validation from Step 1.2.
 
 ### First: Fetch live data from the exchange repo
 
-Before starting the interview, fetch the validator to extract controlled vocabularies:
+Before starting the interview, fetch the validator and contributing checklist:
 
 ```bash
 # Fetch the validator which contains all controlled vocabularies as Literal types
 gh api repos/tenable-cyberagents-exchange/exchange-founders-prelaunch-agents/contents/validator.py --jq '.content' | base64 -d
+
+# Fetch the contributing checklist which defines submission requirements
+gh api repos/tenable-cyberagents-exchange/exchange-founders-prelaunch-agents/contents/docs/contributing_checklist.md --jq '.content' | base64 -d
 ```
 
 Parse the Pydantic models in `validator.py` to extract valid values from `Literal[...]` type annotations:
@@ -139,7 +142,11 @@ Parse the Pydantic models in `validator.py` to extract valid values from `Litera
 - **Auth methods** — from `MCPServer.auth_method` field's Literal values
 - **Clients** — from `MCPServer.compatible_clients` field's Literal values
 
-Store these results for validation throughout Phase 2. You'll also need the appropriate template later — fetch it after the user selects their type:
+Store these results for validation throughout Phase 2.
+
+Review the fetched contributing checklist and note the Tier 1 requirements. As you guide the user through the interview, build the submission so it satisfies every Tier 1 item: the listing must be a single file in the directory matching its type, with a valid slug filename containing no leftover template placeholders; frontmatter must pass validator.py with all controlled-vocabulary fields using valid values; the body must be substantive (not a stub); and the linked repository must have a README covering what it does, prerequisites, how to run, outputs, and known limitations, plus a detectable open-source LICENSE file. This checklist is the authoritative standard the reviewer skill applies, so aligning to it up front means fewer review round-trips.
+
+You'll also need the appropriate template later — fetch it after the user selects their type:
 
 ```bash
 # For agents/tools:

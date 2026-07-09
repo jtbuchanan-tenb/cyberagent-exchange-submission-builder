@@ -7,13 +7,29 @@ description: "Submit an agent, skill, MCP server, or playbook to the Tenable Cyb
 
 Guide the user through submitting their agent, skill, MCP server, or playbook to the Tenable CyberAgents Exchange. This is a multi-phase process: validate their repo, generate a listing file, and submit a PR to the exchange content repository.
 
-The exchange content repo is: `tenable-cyberagents-exchange/exchange-founders-prelaunch-agents`
+The exchange content repo is: `tenable/cyberagents-exchange`
 
 Always confirm with the user before any git commit, push, or PR creation.
 
 ---
 
 ## Phase 1: Locate & Validate the Agent Repo
+
+### Step 1.0 — Contribution Agreement
+
+Before anything else, ask the user to review and accept the contribution agreement:
+
+> "Before we begin, you'll need to review and accept the CyberAgents Exchange Contribution Agreement:"
+>
+> https://github.com/tenable/cyberagents-exchange/blob/main/docs/CyberAgents_Contribution_Agreement
+>
+> "Have you reviewed and do you accept the CyberAgents Exchange Contribution Agreement?"
+
+The user must explicitly confirm acceptance (e.g., "yes", "I accept", "agreed"). If they say no, decline, or express uncertainty:
+
+> "The Contribution Agreement must be accepted before submitting to the Exchange. Feel free to come back when you're ready."
+
+**Do not proceed with any further steps until the user accepts.**
 
 ### Step 1.1 — Detect the repo
 
@@ -126,10 +142,10 @@ Before starting the interview, fetch the validator and contributing checklist:
 
 ```bash
 # Fetch the validator which contains all controlled vocabularies as Literal types
-gh api repos/tenable-cyberagents-exchange/exchange-founders-prelaunch-agents/contents/validator.py --jq '.content' | base64 -d
+gh api repos/tenable/cyberagents-exchange/contents/validator.py --jq '.content' | base64 -d
 
 # Fetch the contributing checklist which defines submission requirements
-gh api repos/tenable-cyberagents-exchange/exchange-founders-prelaunch-agents/contents/docs/contributing_checklist.md --jq '.content' | base64 -d
+gh api repos/tenable/cyberagents-exchange/contents/docs/contributing_checklist.md --jq '.content' | base64 -d
 ```
 
 Parse the Pydantic models in `validator.py` to extract valid values from `Literal[...]` type annotations:
@@ -150,16 +166,16 @@ You'll also need the appropriate template later — fetch it after the user sele
 
 ```bash
 # For agents/tools:
-gh api repos/tenable-cyberagents-exchange/exchange-founders-prelaunch-agents/contents/templates/agent-template.md --jq '.content' | base64 -d
+gh api repos/tenable/cyberagents-exchange/contents/templates/agent-template.md --jq '.content' | base64 -d
 
 # For skills:
-gh api repos/tenable-cyberagents-exchange/exchange-founders-prelaunch-agents/contents/templates/skill-template.md --jq '.content' | base64 -d
+gh api repos/tenable/cyberagents-exchange/contents/templates/skill-template.md --jq '.content' | base64 -d
 
 # For MCP servers:
-gh api repos/tenable-cyberagents-exchange/exchange-founders-prelaunch-agents/contents/templates/mcp-server-template.md --jq '.content' | base64 -d
+gh api repos/tenable/cyberagents-exchange/contents/templates/mcp-server-template.md --jq '.content' | base64 -d
 
 # For playbooks:
-gh api repos/tenable-cyberagents-exchange/exchange-founders-prelaunch-agents/contents/templates/playbook-template.md --jq '.content' | base64 -d
+gh api repos/tenable/cyberagents-exchange/contents/templates/playbook-template.md --jq '.content' | base64 -d
 ```
 
 ### Step 2.1 — License validation
@@ -230,10 +246,10 @@ Store the selection as `playbook_subtype`. This determines which template to fet
 Fetch the appropriate template:
 ```bash
 # For standard/sponsored:
-gh api repos/tenable-cyberagents-exchange/exchange-founders-prelaunch-agents/contents/templates/playbook-template.md --jq '.content' | base64 -d
+gh api repos/tenable/cyberagents-exchange/contents/templates/playbook-template.md --jq '.content' | base64 -d
 
 # For n8n:
-gh api repos/tenable-cyberagents-exchange/exchange-founders-prelaunch-agents/contents/templates/n8n-playbook-template.md --jq '.content' | base64 -d
+gh api repos/tenable/cyberagents-exchange/contents/templates/n8n-playbook-template.md --jq '.content' | base64 -d
 ```
 
 ### Step 2.3 — Auto-detected fields
@@ -712,53 +728,42 @@ If not authenticated, tell the user:
 > ```
 > "This will open a browser for authentication. Follow the prompts to log in with your **personal** GitHub account (not an EMU/corporate account)."
 
-### Step 3.2 — Verify exchange repo access
+### Step 3.2 — Verify account and exchange repo access
 
-Test access to the content repository:
-```bash
-gh api repos/tenable-cyberagents-exchange/exchange-founders-prelaunch-agents --jq '.full_name'
-```
-
-**If this fails (404 or 403):**
-
-First, check if this is an EMU account issue:
+First, check if the authenticated user is an EMU (Enterprise Managed User) account:
 ```bash
 gh api user --jq '.login'
 ```
 
-Inspect the returned username. If it contains an **underscore** separating an org prefix from a username (e.g., `tenable_jbuchanan`), it's an EMU account. Hyphens are normal — do NOT flag those. Tell the user:
+Inspect the returned username. If it contains an **underscore** separating an org prefix from a username (e.g., `tenable_jbuchanan`), it's an EMU account. Hyphens in usernames (e.g., `jtbuchanan-tenb`) are normal personal accounts — do NOT flag those.
 
-> "You're currently authenticated as `<username>`, which appears to be an Enterprise Managed User (EMU) account. EMU accounts cannot access repositories outside their enterprise. You need to switch to a personal GitHub account.
+**If EMU detected:**
+
+> "You're currently authenticated as `<username>`, which appears to be an Enterprise Managed User (EMU) account. EMU accounts cannot fork public repositories or create pull requests outside their enterprise. You need to switch to a personal GitHub account.
 >
-> Do you have a personal GitHub account? If so, what's the username? I can help you switch."
+> Do you have a personal GitHub account? If so, run:"
+> ```
+> gh auth login
+> ```
+> "Follow the prompts to log in with your personal account."
 
-If they provide a personal username, run:
+If they don't have a personal account, direct them to github.com/signup to create one. After login, re-run the EMU check.
+
+**Do not proceed until the authenticated user is on a personal account.**
+
+Then verify the exchange repository is reachable:
 ```bash
-gh auth login
+gh api repos/tenable/cyberagents-exchange --jq '.full_name'
 ```
-Walk them through the browser auth flow. After login, re-run the access check.
 
-If they don't have a personal account, direct them to github.com/signup to create one.
+This is a public repository, so it should always be reachable. If this fails, it's likely a network or `gh` auth issue — guide the user to check `gh auth status`.
 
-**If not an EMU issue** (username looks normal but access denied):
+### Step 3.3 — Fork the exchange repo and prepare branch
 
-> "You don't currently have access to the exchange content repository (`tenable-cyberagents-exchange/exchange-founders-prelaunch-agents`). This is a private repo — you need to be added as a collaborator.
->
-> Contact one of these people to request access:
-> - **Justin Buchanan** — [@jtbuchanan-tenb](https://github.com/jtbuchanan-tenb)
-> - **Patrick Ramseier** — [@pramseier-tenb](https://github.com/pramseier-tenb)
-> - **DJ Zito**
->
-> Once you've been added and accepted the invitation, let me know and I'll continue."
-
-Pause and wait for the user to confirm before continuing.
-
-### Step 3.3 — Clone the exchange repo and prepare branch
-
-Clone the exchange repo directly to a temporary directory (no forking required — contributors have push access):
+Fork the exchange repo and clone it to a temporary directory:
 ```bash
 CLONE_DIR=$(mktemp -d)
-gh repo clone tenable-cyberagents-exchange/exchange-founders-prelaunch-agents "$CLONE_DIR"
+gh repo fork tenable/cyberagents-exchange --clone --clone-dir "$CLONE_DIR"
 cd "$CLONE_DIR"
 ```
 
@@ -832,10 +837,10 @@ git commit -m "Add listing: <Agent Name>"
 git push -u origin add-<slug>
 ```
 
-Create the pull request. If vocabulary updates were included, mention them in the PR body:
+Create the pull request against the upstream repo. If vocabulary updates were included, mention them in the PR body:
 ```bash
 gh pr create \
-  --repo tenable-cyberagents-exchange/exchange-founders-prelaunch-agents \
+  --repo tenable/cyberagents-exchange \
   --title "Add listing: <Agent Name>" \
   --body "## New Listing: <Agent Name>
 
@@ -844,6 +849,7 @@ gh pr create \
 **Description:** <description>
 
 ### Checklist
+- [x] I have reviewed and accept the [CyberAgents Exchange Contribution Agreement](https://github.com/tenable/cyberagents-exchange/blob/main/docs/CyberAgents_Contribution_Agreement)
 - [x] Agent/playbook code is in a personal GitHub repo
 - [x] Repo has a README
 - [x] Repo has an open source license (<license>)

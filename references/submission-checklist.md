@@ -2,6 +2,10 @@
 
 Run through each section before submitting. Every item must pass.
 
+## Contribution Agreement
+- [ ] User has reviewed the [CyberAgents Exchange Contribution Agreement](https://github.com/tenable/cyberagents-exchange/blob/main/docs/CyberAgents_Contribution_Agreement)
+- [ ] User has explicitly accepted the agreement
+
 ## Repo Structure
 - [ ] CWD (or user-specified path) is a git repository
 - [ ] Git remote points to a GitHub URL
@@ -32,8 +36,9 @@ Required fields — all must be present and valid:
 - [ ] `compatible_platforms` — array, each validated against `Skill.compatible_platforms` Literal values in `validator.py`
 - [ ] `invocation` — string, the command/trigger name
 
-## Listing Frontmatter (Playbook)
+## Listing Frontmatter (Playbook — Standard)
 Required fields — all must be present and valid:
+- [ ] `playbook_type` — must be `"standard"`
 - [ ] `name` — non-empty string
 - [ ] `author` — matches the GitHub username from the remote
 - [ ] `github_url` — valid URL, matches the actual repo remote
@@ -45,7 +50,45 @@ Required fields — all must be present and valid:
 - [ ] `agents_used` — non-empty array, each entry has:
   - `name` — non-empty string
   - `role` — non-empty string describing the agent's role in the chain
-  - `type` — one of: `exchange`, `github`, `info`
+  - `type` — one of: `exchange`, `github`, `info` (NO `vendor`)
+  - `ref` — required for `exchange` (slug) and `github` (URL); optional for `info`
+- [ ] `date_added` — today's date in YYYY-MM-DD format
+
+## Listing Frontmatter (Playbook — Sponsored)
+Required fields — all must be present and valid:
+- [ ] `playbook_type` — must be `"sponsored"`
+- [ ] `name` — non-empty string
+- [ ] `author` — matches the GitHub username from the remote
+- [ ] `github_url` — valid URL, matches the actual repo remote
+- [ ] `description` — non-empty, one-line summary
+- [ ] `license` — valid SPDX identifier
+- [ ] `tier` — must be `"unreviewed"`
+- [ ] `tags` — non-empty array of lowercase strings
+- [ ] `integrations` — array, each value validated against `Entry.integrations` Literal values in `validator.py`
+- [ ] `agents_used` — non-empty array, each entry has:
+  - `name` — non-empty string
+  - `role` — non-empty string describing the agent's role in the chain
+  - `type` — one of: `exchange`, `github`, `info`, `vendor` (`vendor` allowed for sponsored only)
+  - `ref` — required for `exchange` (slug), `github` (URL), and `vendor` (URL); optional for `info`
+- [ ] `logo` — publicly accessible image URL (PNG or SVG recommended)
+- [ ] `date_added` — today's date in YYYY-MM-DD format
+
+## Listing Frontmatter (Playbook — n8n)
+Required fields — all must be present and valid:
+- [ ] `playbook_type` — must be `"n8n"`
+- [ ] `name` — non-empty string
+- [ ] `author` — matches the GitHub username from the remote
+- [ ] `github_url` — valid URL, matches the actual repo remote
+- [ ] `description` — non-empty, one-line summary
+- [ ] `license` — valid SPDX identifier
+- [ ] `tier` — must be `"unreviewed"`
+- [ ] `tags` — non-empty array of lowercase strings
+- [ ] `integrations` — array, each value validated against `Entry.integrations` Literal values in `validator.py`
+- [ ] `workflow_diagram` — Mermaid flowchart string (required)
+- [ ] `agents_used` — optional array; if present, each entry has:
+  - `name` — non-empty string
+  - `role` — non-empty string describing the agent's role in the chain
+  - `type` — one of: `exchange`, `github`, `info` (NO `vendor`)
   - `ref` — required for `exchange` (slug) and `github` (URL); optional for `info`
 - [ ] `date_added` — today's date in YYYY-MM-DD format
 
@@ -62,7 +105,7 @@ Required fields — all must be present and valid:
 
 ## Exchange Submission
 - [ ] `gh` CLI is authenticated (`gh auth status` succeeds)
-- [ ] Authenticated user can access `tenable-cyberagents-exchange/exchange-founders-prelaunch-agents`
+- [ ] Authenticated user can access `tenable/cyberagents-exchange`
 - [ ] Listing filename is a valid slug (lowercase, hyphens, no spaces, no special chars)
 - [ ] No filename conflict with existing files in target directory (`agents/`, `mcp-servers/`, `playbooks/`, or `skills/`)
 - [ ] PR title follows format: `"Add listing: <Agent Name>"`

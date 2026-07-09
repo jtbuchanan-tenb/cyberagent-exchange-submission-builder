@@ -1,6 +1,6 @@
 # CyberAgents Exchange Submit
 
-A Claude Code skill that walks you through submitting your cybersecurity AI agent, MCP server, or playbook to the [Tenable CyberAgents Exchange](https://exchange.tenable.com).
+A Claude Code skill that walks you through submitting your cybersecurity AI agent, skill, MCP server, or playbook to the [Tenable CyberAgents Exchange](https://exchange.tenable.com).
 
 ## What This Does
 
@@ -48,16 +48,15 @@ Before running the skill, make sure you have:
 
 - **[Claude Code](https://docs.anthropic.com/en/docs/claude-code)** installed
 - **[GitHub CLI (`gh`)](https://cli.github.com/)** installed and authenticated (`gh auth login`)
-- **Your agent/playbook code** pushed to a **public** GitHub repository under your personal account
-- **Access to the Exchange content repo** — contact Justin Buchanan ([@jtbuchanan-tenb](https://github.com/jtbuchanan-tenb)), Patrick Ramseier ([@pramseier-tenb](https://github.com/pramseier-tenb)), or DJ Zito to be added as a collaborator
+- **Your project code** pushed to a **public** GitHub repository under your personal account
 
 > **Note:** If you're a Tenable employee, you'll need to use a personal GitHub account (not your corporate EMU account) to submit listings. The skill will detect this and help you switch if needed.
 
 ## Usage
 
-1. Open your terminal in your agent's repository directory
+1. Open your terminal in your project's repository directory
 2. Start Claude Code
-3. Ask Claude to submit your agent:
+3. Ask Claude to submit your project:
 
 ```
 Submit my agent to the Tenable CyberAgents Exchange
@@ -75,13 +74,20 @@ Claude will guide you through each step interactively, asking for confirmation b
 
 The skill auto-detects as much as possible from your repo, but will ask you about:
 
-- **Type** — Is this an agent, skill, tool, or MCP server?
-- **Description** — A one-line summary of what your agent does
+- **Type** — Is this an agent, skill, tool, MCP server, or playbook?
+- **Description** — A one-line summary of what your project does
 - **Tags** — Keywords for discoverability (e.g., `vuln-management`, `incident-response`)
 - **Framework** — What your agent is built with (e.g., Claude Code SKILL, LangChain, MCP SDK)
 - **Integrations** — Which platforms it works with (e.g., Tenable, CrowdStrike, Splunk)
 
-For playbooks, you'll also describe the agent chain — which agents/steps are involved and how they connect.
+For **skills**, the skill auto-detects compatible platforms (Claude Code, Cursor, Windsurf, etc.) and invocation commands from your repo structure.
+
+For **MCP servers**, it detects transport type, runtime, auth method, compatible clients, and exposed tools/resources/prompts from your code.
+
+For **playbooks**, you'll select a subtype and provide additional details:
+- **Standard** — Describe the agent chain (which agents/steps are involved and how they connect)
+- **Sponsored** — Vendor-partnered playbook with co-branding (requires a logo URL, may include vendor-type agent references)
+- **n8n** — An n8n workflow; the skill reads your `workflow.json` and generates a Mermaid diagram automatically
 
 If your listing needs a value that isn't in the Exchange's current vocabulary (e.g., a new integration vendor), the skill will add it to the validator for you and include the update in your submission PR.
 
@@ -95,7 +101,19 @@ If your listing needs a value that isn't in the Exchange's current vocabulary (e
 | **MCP Server** | A Model Context Protocol server exposing tools/resources |
 | **Playbook** | A workflow that chains multiple agents together |
 
+### Playbook Subtypes
+
+| Subtype | What it is |
+|---------|-----------|
+| **Standard** | A multi-agent orchestration you've designed — requires listing the agents in the chain |
+| **Sponsored** | A vendor-partnered playbook with co-branding — requires a logo URL and may include vendor-type agent references |
+| **n8n** | An n8n workflow with a `workflow.json` file — generates a visual Mermaid workflow diagram |
+
+## Roadmap
+
+- **KPI capture for contributions** — Future versions of this skill will help contributors capture key performance indicators (KPIs) demonstrating how their submission has improved security operations. This may include self-reported metrics (e.g., time saved, incidents handled, coverage gained) or optional monitoring integrations that automatically collect usage and impact data points over time.
+
 ## Questions or Issues?
 
-- For Exchange access or listing questions: contact the Exchange maintainers listed above
-- For issues with this skill: open an issue in this repository
+- For Exchange questions: visit [exchange.tenable.com](https://exchange.tenable.com) or [open an issue](https://github.com/tenable/cyberagents-exchange/issues) on the Exchange repository
+- For issues with this skill: [open an issue](https://github.com/jtbuchanan-tenb/cyberagent-exchange-submission-builder/issues) in this repository

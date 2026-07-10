@@ -23,10 +23,8 @@ Required fields — all must be present and valid:
 - [ ] `github_url` — valid URL, matches the actual repo remote
 - [ ] `description` — non-empty, one-line summary
 - [ ] `license` — valid SPDX identifier (MIT, Apache-2.0, GPL-3.0-only, BSD-2-Clause, etc.)
-- [ ] `type` — validated against `Agent.type` Literal values in `validator.py`
 - [ ] `tier` — must be `"unreviewed"` for new submissions
 - [ ] `tags` — non-empty array of lowercase strings
-- [ ] `framework` — non-empty string describing the implementation framework
 - [ ] `integrations` — array, each value validated against `Entry.integrations` Literal values in `validator.py`
 - [ ] `date_added` — today's date in YYYY-MM-DD format
 

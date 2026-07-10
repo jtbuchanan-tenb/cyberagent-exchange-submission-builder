@@ -150,7 +150,6 @@ gh api repos/tenable/cyberagents-exchange/contents/docs/contributing_checklist.m
 
 Parse the Pydantic models in `validator.py` to extract valid values from `Literal[...]` type annotations:
 - **Integrations** — from `Entry.integrations` field's Literal values
-- **Types** — from `Agent.type` field's Literal values (e.g., "agent", "tool", "mcp-server")
 - **Tiers** — from `Entry.tier` field's Literal values
 - **Platforms** — from `Skill.compatible_platforms` field's Literal values
 - **Transports** — from `MCPServer.transport` field's Literal values
@@ -222,16 +221,14 @@ If the repo has a `package.json` without a `license` field, suggest:
 Ask the user:
 > "What type of listing are you submitting?"
 
-Present the types fetched from the founders repo with their descriptions, plus `mcp-server` (which is now its own collection). If the fetched data is the new object format (with `id` and `description` fields), show each option with its description. If it's the old flat array, show just the values:
+Present the options:
 
-> - **agent** — A standalone autonomous AI system with its own runtime and control loop
+> - **agent** — A standalone autonomous AI system, CLI tool, library, or utility
 > - **skill** — An agent skill file (SKILL.md) that extends AI coding assistants (goes to `skills/` directory)
-> - **tool** — A CLI tool, library, script, or standalone utility
 > - **mcp-server** — A Model Context Protocol server exposing data sources or actions
+> - **playbook** — A multi-agent workflow or orchestration
 
-Validate their selection: `agent`, `skill`, and `tool` must match the `Agent.type` Literal values from the validator. `mcp-server` is always valid (it's a separate collection now). `playbook` is also always valid.
-
-After type selection, fetch the appropriate template (agent-template.md for agent/tool, skill-template.md for skill, mcp-server-template.md for mcp-server, playbook-template.md or n8n-playbook-template.md for playbooks).
+After type selection, fetch the appropriate template (agent-template.md for agents, skill-template.md for skills, mcp-server-template.md for MCP servers, playbook-template.md or n8n-playbook-template.md for playbooks).
 
 ### Step 2.2b — Playbook subtype selection (only for playbooks)
 
@@ -283,17 +280,6 @@ For these fields, read the repo context (README, code structure, imports, depend
 
 **`tags`** — Suggest 3-7 tags based on README content, code keywords, and the domain. Tags should be lowercase, hyphenated. Ask:
 > "Suggested tags: `[<tag1>, <tag2>, ...]`. Want to add, remove, or change any?"
-
-**`framework`** — Infer from repo structure:
-- `SKILL.md` present → "Claude Code SKILL"
-- `mcp` or `@modelcontextprotocol` in package.json/deps → "MCP SDK"
-- `langchain` in deps → "LangChain"
-- `crewai` in deps → "CrewAI"
-- `autogen` in deps → "AutoGen"
-- Python with agent patterns → ask the user
-- Otherwise → ask the user
-
-Confirm: "I'm guessing the framework is `<detected>`. Is that right?"
 
 **`integrations`** — Search the README and code for references to known platforms. Cross-reference with the integrations list parsed from the validator. Suggest matches and show the full list of valid options:
 > "Based on your code, I think these integrations apply: `[<suggested>]`. Here's the full list of valid integrations: `[<all valid>]`. Want to add or remove any?"
@@ -566,10 +552,8 @@ author: "<author>"
 github_url: "<url>"
 description: "<description>"
 license: "<spdx-id>"
-type: "<type>"
 tier: "unreviewed"
 tags: [<tags>]
-framework: "<framework>"
 integrations: [<integrations>]
 date_added: <YYYY-MM-DD>
 ---
@@ -777,7 +761,7 @@ Where `<slug>` is the same slug used for the listing filename.
 ### Step 3.4 — Place listing file
 
 Determine the target directory:
-- If type is `agent` or `tool` → place in `agents/`
+- If type is `agent` → place in `agents/`
 - If type is `skill` → place in `skills/`
 - If type is `mcp-server` → place in `mcp-servers/`
 - If type is playbook → place in `playbooks/`
@@ -845,7 +829,6 @@ gh pr create \
   --body "## New Listing: <Agent Name>
 
 **Repository:** <github_url>
-**Type:** <type>
 **Description:** <description>
 
 ### Checklist

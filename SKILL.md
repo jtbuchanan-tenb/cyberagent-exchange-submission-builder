@@ -324,7 +324,7 @@ grep -ri "hexa.mcp\|hexa-mcp\|tenable.*hexa\|tenable/hexa" README* *.md .claude/
 grep -ri "hexa.mcp\|hexa-mcp" --include="*.py" --include="*.ts" --include="*.js" --include="*.json" --include="*.yaml" --include="*.yml" . 2>/dev/null | grep -v node_modules | grep -v .venv
 ```
 
-If repo evidence supports Hexa MCP usage AND the user confirms, set `works_with_tenable_hexa_mcp: true`. If the user says they use other Tenable APIs (or the evidence doesn't support Hexa MCP), set it to `false`.
+If repo evidence supports Hexa MCP usage AND the user confirms, set `works_with_tenable_hexa_mcp: true` **and** add `"Tenable Hexa AI MCP"` to the `integrations` list (if not already present). The validator enforces that `works_with_tenable_hexa_mcp: true` requires the `"Tenable Hexa AI MCP"` integration — they must always appear together. If the user says they use other Tenable APIs (or the evidence doesn't support Hexa MCP), set it to `false` and do not add the integration.
 
 ### Step 2.4-SKILL — Skill-specific fields (only for `skill` type)
 

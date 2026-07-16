@@ -5,6 +5,7 @@ Run through each section before submitting. Every item must pass.
 ## Contribution Agreement
 - [ ] User has reviewed the [CyberAgents Exchange Contribution Agreement](https://github.com/tenable/cyberagents-exchange/blob/main/docs/CyberAgents_Contribution_Agreement)
 - [ ] User has explicitly accepted the agreement
+- [ ] `contribution_agreement_date` captured as ISO 8601 timestamp at the moment of acceptance
 
 ## Repo Structure
 - [ ] CWD (or user-specified path) is a git repository
@@ -23,14 +24,17 @@ Required fields — all must be present and valid:
 - [ ] `github_url` — valid URL, matches the actual repo remote
 - [ ] `description` — non-empty, one-line summary
 - [ ] `license` — valid SPDX identifier (MIT, Apache-2.0, GPL-3.0-only, BSD-2-Clause, etc.)
-- [ ] `tier` — must be `"unreviewed"` for new submissions
+- [ ] `tier` — must be `"contributed"` for new submissions
 - [ ] `tags` — non-empty array of lowercase strings
 - [ ] `integrations` — array, each value validated against `Entry.integrations` Literal values in `validator.py`
 - [ ] `date_added` — today's date in YYYY-MM-DD format
+- [ ] `contribution_agreement_date` — ISO 8601 datetime from Step 1.0
+- [ ] `works_with_tenable_hexa_mcp` — boolean, set based on Step 2.4b (only relevant if Tenable is an integration)
 
 ## Listing Frontmatter (Skill)
 Required fields — all must be present and valid:
-- [ ] All common fields (name, author, github_url, description, license, tier, tags, integrations, date_added)
+- [ ] All common fields (name, author, github_url, description, license, tier, tags, integrations, date_added, contribution_agreement_date)
+- [ ] `works_with_tenable_hexa_mcp` — boolean, set based on Step 2.4b
 - [ ] `compatible_platforms` — array, each validated against `Skill.compatible_platforms` Literal values in `validator.py`
 - [ ] `invocation` — string, the command/trigger name
 
@@ -42,7 +46,7 @@ Required fields — all must be present and valid:
 - [ ] `github_url` — valid URL, matches the actual repo remote
 - [ ] `description` — non-empty, one-line summary
 - [ ] `license` — valid SPDX identifier
-- [ ] `tier` — must be `"unreviewed"`
+- [ ] `tier` — must be `"contributed"`
 - [ ] `tags` — non-empty array of lowercase strings
 - [ ] `integrations` — array, each value validated against `Entry.integrations` Literal values in `validator.py`
 - [ ] `agents_used` — non-empty array, each entry has:
@@ -51,6 +55,8 @@ Required fields — all must be present and valid:
   - `type` — one of: `exchange`, `github`, `info` (NO `vendor`)
   - `ref` — required for `exchange` (slug) and `github` (URL); optional for `info`
 - [ ] `date_added` — today's date in YYYY-MM-DD format
+- [ ] `contribution_agreement_date` — ISO 8601 datetime from Step 1.0
+- [ ] `works_with_tenable_hexa_mcp` — boolean, set based on Step 2.4b
 
 ## Listing Frontmatter (Playbook — Sponsored)
 Required fields — all must be present and valid:
@@ -60,7 +66,7 @@ Required fields — all must be present and valid:
 - [ ] `github_url` — valid URL, matches the actual repo remote
 - [ ] `description` — non-empty, one-line summary
 - [ ] `license` — valid SPDX identifier
-- [ ] `tier` — must be `"unreviewed"`
+- [ ] `tier` — must be `"contributed"`
 - [ ] `tags` — non-empty array of lowercase strings
 - [ ] `integrations` — array, each value validated against `Entry.integrations` Literal values in `validator.py`
 - [ ] `agents_used` — non-empty array, each entry has:
@@ -70,6 +76,8 @@ Required fields — all must be present and valid:
   - `ref` — required for `exchange` (slug), `github` (URL), and `vendor` (URL); optional for `info`
 - [ ] `logo` — publicly accessible image URL (PNG or SVG recommended)
 - [ ] `date_added` — today's date in YYYY-MM-DD format
+- [ ] `contribution_agreement_date` — ISO 8601 datetime from Step 1.0
+- [ ] `works_with_tenable_hexa_mcp` — boolean, set based on Step 2.4b
 
 ## Listing Frontmatter (Playbook — n8n)
 Required fields — all must be present and valid:
@@ -79,7 +87,7 @@ Required fields — all must be present and valid:
 - [ ] `github_url` — valid URL, matches the actual repo remote
 - [ ] `description` — non-empty, one-line summary
 - [ ] `license` — valid SPDX identifier
-- [ ] `tier` — must be `"unreviewed"`
+- [ ] `tier` — must be `"contributed"`
 - [ ] `tags` — non-empty array of lowercase strings
 - [ ] `integrations` — array, each value validated against `Entry.integrations` Literal values in `validator.py`
 - [ ] `workflow_diagram` — Mermaid flowchart string (required)
@@ -89,10 +97,13 @@ Required fields — all must be present and valid:
   - `type` — one of: `exchange`, `github`, `info` (NO `vendor`)
   - `ref` — required for `exchange` (slug) and `github` (URL); optional for `info`
 - [ ] `date_added` — today's date in YYYY-MM-DD format
+- [ ] `contribution_agreement_date` — ISO 8601 datetime from Step 1.0
+- [ ] `works_with_tenable_hexa_mcp` — boolean, set based on Step 2.4b
 
 ## Listing Frontmatter (MCP Server)
 Required fields — all must be present and valid:
-- [ ] All common fields (name, author, github_url, description, license, tier, tags, integrations, date_added)
+- [ ] All common fields (name, author, github_url, description, license, tier, tags, integrations, date_added, contribution_agreement_date)
+- [ ] `works_with_tenable_hexa_mcp` — boolean, set based on Step 2.4b
 - [ ] `transport` — validated against `MCPServer.transport` Literal values in `validator.py`
 - [ ] `runtime` — validated against `MCPServer.runtime` Literal values in `validator.py`
 - [ ] `auth_method` — validated against `MCPServer.auth_method` Literal values in `validator.py`

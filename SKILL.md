@@ -31,6 +31,14 @@ The user must explicitly confirm acceptance (e.g., "yes", "I accept", "agreed").
 
 **Do not proceed with any further steps until the user accepts.**
 
+**When the user accepts**, immediately record the current UTC date and time as the `contribution_agreement_date`. Store this as an ISO 8601 timestamp (e.g., `2026-07-09T14:30:00Z`). Use the current time at the moment of acceptance:
+
+```bash
+date -u +%Y-%m-%dT%H:%M:%SZ
+```
+
+This timestamp will be included in the listing frontmatter.
+
 ### Step 1.1 — Detect the repo
 
 Check if the current working directory is a git repository with a GitHub remote:
@@ -260,7 +268,8 @@ Determine these fields automatically and present them for confirmation:
 | `author` | The owner from the GitHub remote URL |
 | `license` | The SPDX identifier from Step 2.1 |
 | `date_added` | Today's date in YYYY-MM-DD format |
-| `tier` | Always `"unreviewed"` — hardcoded, do not ask |
+| `tier` | Always `"contributed"` — hardcoded, do not ask |
+| `contribution_agreement_date` | The ISO 8601 timestamp captured in Step 1.0 when the user accepted the Contribution Agreement |
 
 Present these to the user:
 > "Here's what I've detected from your repo. Please confirm or correct:"
@@ -269,7 +278,8 @@ Present these to the user:
 > - **Author:** <detected>
 > - **License:** <detected>
 > - **Date added:** <today>
-> - **Tier:** unreviewed (all new submissions start here)
+> - **Contribution Agreement accepted:** <timestamp from Step 1.0>
+> - **Tier:** contributed (all new submissions start here)
 
 ### Step 2.4 — Generative-assisted fields
 
@@ -292,6 +302,29 @@ If no fuzzy match is found and the user confirms the value is correct (e.g., a n
 If the user agrees, track the new value and which field it belongs to. In Phase 3 (Step 3.4), the skill will apply these vocabulary updates to `validator.py` in the exchange repo clone before committing.
 
 This same handling applies to any controlled vocabulary field (platforms, clients, runtimes, transports, auth methods) where the user needs a value that doesn't yet exist.
+
+### Step 2.4b — Tenable Hexa MCP detection
+
+**Only ask this if the user's `integrations` list includes `"Tenable"`.** If Tenable is not among the integrations, skip this step entirely and set `works_with_tenable_hexa_mcp` to `false` (or omit it).
+
+If `"Tenable"` is in the integrations, ask:
+
+> "Your submission integrates with Tenable. Does it use the **Tenable Hexa MCP** server for its Tenable integration?
+>
+> - If it connects to Tenable via the [Tenable Hexa MCP](https://github.com/tenable/hexa-mcp), I'll mark it as `works_with_tenable_hexa_mcp: true`.
+> - If it uses other Tenable APIs directly (Tenable VM API, Security Center API, Nessus API, etc.), I'll leave this as `false`.
+>
+> Which does yours use?"
+
+Additionally, scan the repository for evidence:
+
+```bash
+# Look for Hexa MCP references
+grep -ri "hexa.mcp\|hexa-mcp\|tenable.*hexa\|tenable/hexa" README* *.md .claude/* 2>/dev/null
+grep -ri "hexa.mcp\|hexa-mcp" --include="*.py" --include="*.ts" --include="*.js" --include="*.json" --include="*.yaml" --include="*.yml" . 2>/dev/null | grep -v node_modules | grep -v .venv
+```
+
+If repo evidence supports Hexa MCP usage AND the user confirms, set `works_with_tenable_hexa_mcp: true`. If the user says they use other Tenable APIs (or the evidence doesn't support Hexa MCP), set it to `false`.
 
 ### Step 2.4-SKILL — Skill-specific fields (only for `skill` type)
 
@@ -552,10 +585,12 @@ author: "<author>"
 github_url: "<url>"
 description: "<description>"
 license: "<spdx-id>"
-tier: "unreviewed"
+tier: "contributed"
 tags: [<tags>]
 integrations: [<integrations>]
 date_added: <YYYY-MM-DD>
+contribution_agreement_date: <ISO-8601-TIMESTAMP>
+works_with_tenable_hexa_mcp: <true|false>
 ---
 
 <body content>
@@ -569,10 +604,12 @@ author: "<author>"
 github_url: "<url>"
 description: "<description>"
 license: "<spdx-id>"
-tier: "unreviewed"
+tier: "contributed"
 tags: [<tags>]
 integrations: [<integrations>]
 date_added: <YYYY-MM-DD>
+contribution_agreement_date: <ISO-8601-TIMESTAMP>
+works_with_tenable_hexa_mcp: <true|false>
 compatible_platforms: [<platforms>]
 invocation: "<invocation>"
 ---
@@ -588,10 +625,12 @@ author: "<author>"
 github_url: "<url>"
 description: "<description>"
 license: "<spdx-id>"
-tier: "unreviewed"
+tier: "contributed"
 tags: [<tags>]
 integrations: [<integrations>]
 date_added: <YYYY-MM-DD>
+contribution_agreement_date: <ISO-8601-TIMESTAMP>
+works_with_tenable_hexa_mcp: <true|false>
 transport: "<transport>"
 runtime: "<runtime>"
 auth_method: "<auth-method>"
@@ -615,7 +654,7 @@ author: "<author>"
 github_url: "<url>"
 description: "<description>"
 license: "<spdx-id>"
-tier: "unreviewed"
+tier: "contributed"
 tags: [<tags>]
 integrations: [<integrations>]
 agents_used:
@@ -624,6 +663,8 @@ agents_used:
     type: "<type>"
     ref: "<ref>"
 date_added: <YYYY-MM-DD>
+contribution_agreement_date: <ISO-8601-TIMESTAMP>
+works_with_tenable_hexa_mcp: <true|false>
 ---
 
 <body content>
@@ -638,7 +679,7 @@ author: "<author>"
 github_url: "<url>"
 description: "<description>"
 license: "<spdx-id>"
-tier: "unreviewed"
+tier: "contributed"
 tags: [<tags>]
 integrations: [<integrations>]
 agents_used:
@@ -648,6 +689,8 @@ agents_used:
     ref: "<ref>"
 logo: "<logo_url>"
 date_added: <YYYY-MM-DD>
+contribution_agreement_date: <ISO-8601-TIMESTAMP>
+works_with_tenable_hexa_mcp: <true|false>
 ---
 
 <body content>
@@ -662,12 +705,14 @@ author: "<author>"
 github_url: "<url>"
 description: "<description>"
 license: "<spdx-id>"
-tier: "unreviewed"
+tier: "contributed"
 tags: [<tags>]
 integrations: [<integrations>]
 workflow_diagram: |
   <mermaid source>
 date_added: <YYYY-MM-DD>
+contribution_agreement_date: <ISO-8601-TIMESTAMP>
+works_with_tenable_hexa_mcp: <true|false>
 ---
 
 <body content>

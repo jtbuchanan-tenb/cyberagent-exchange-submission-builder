@@ -5,7 +5,7 @@ github_url: "https://github.com/jtbuchanan-tenb/cyberagent-exchange-submission-b
 description: "A Claude Code skill that guides you through submitting agents, skills, MCP servers, and playbooks to the Tenable CyberAgents Exchange"
 license: "MIT"
 type: "skill"
-tier: "unreviewed"
+tier: "contributed"
 tags: ["claude-code", "exchange", "submission", "automation", "cybersecurity"]
 framework: "Claude Code SKILL"
 integrations: ["Anthropic"]

@@ -725,7 +725,7 @@ Ask for any final changes. Iterate until the user approves.
 
 ### Step 2.8 — Commit listing to agent repo
 
-Read `references/submission-checklist.md` and verify the listing passes all relevant checks before proceeding.
+Re-read the contributing checklist fetched at the start of Phase 2 (from `docs/contributing_checklist.md` in the exchange repo) and verify the listing passes all relevant Tier 1 checks before proceeding.
 
 Determine the filename: generate a slug from the `name` field (lowercase, replace spaces and special characters with hyphens, strip leading/trailing hyphens).
 

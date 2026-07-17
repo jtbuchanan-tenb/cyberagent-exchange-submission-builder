@@ -305,7 +305,7 @@ This same handling applies to any controlled vocabulary field (platforms, client
 
 ### Step 2.4b — Tenable Hexa MCP detection
 
-**Only ask this if the user's `integrations` list includes `"Tenable"`.** If Tenable is not among the integrations, skip this step entirely and set `works_with_tenable_hexa_mcp` to `false` (or omit it).
+**Only ask this if the user's `integrations` list includes `"Tenable"`.** If Tenable is not among the integrations, skip this step entirely and omit `works_with_tenable_hexa_mcp` from the listing (it is optional — only include it when `true`).
 
 If `"Tenable"` is in the integrations, ask:
 
@@ -324,7 +324,7 @@ grep -ri "hexa.mcp\|hexa-mcp\|tenable.*hexa\|tenable/hexa" README* *.md .claude/
 grep -ri "hexa.mcp\|hexa-mcp" --include="*.py" --include="*.ts" --include="*.js" --include="*.json" --include="*.yaml" --include="*.yml" . 2>/dev/null | grep -v node_modules | grep -v .venv
 ```
 
-If repo evidence supports Hexa MCP usage AND the user confirms, set `works_with_tenable_hexa_mcp: true` **and** add `"Tenable Hexa AI MCP"` to the `integrations` list (if not already present). The validator enforces that `works_with_tenable_hexa_mcp: true` requires the `"Tenable Hexa AI MCP"` integration — they must always appear together. If the user says they use other Tenable APIs (or the evidence doesn't support Hexa MCP), set it to `false` and do not add the integration.
+If repo evidence supports Hexa MCP usage AND the user confirms, set `works_with_tenable_hexa_mcp: true` **and** add `"Tenable Hexa AI MCP"` to the `integrations` list (if not already present). The validator enforces that `works_with_tenable_hexa_mcp: true` requires the `"Tenable Hexa AI MCP"` integration — they must always appear together. If the user says they use other Tenable APIs (or the evidence doesn't support Hexa MCP), omit `works_with_tenable_hexa_mcp` from the listing entirely — do not include it as `false`.
 
 ### Step 2.4-SKILL — Skill-specific fields (only for `skill` type)
 
@@ -577,6 +577,8 @@ Present this to the user:
 
 Assemble the complete listing markdown file using the fetched template as the structural guide. The output should look like:
 
+**Note:** Only include `works_with_tenable_hexa_mcp: true` if Step 2.4b confirmed Hexa MCP usage. If not applicable or false, omit the field entirely.
+
 For agents:
 ```yaml
 ---
@@ -590,7 +592,6 @@ tags: [<tags>]
 integrations: [<integrations>]
 date_added: <YYYY-MM-DD>
 contribution_agreement_date: <ISO-8601-TIMESTAMP>
-works_with_tenable_hexa_mcp: <true|false>
 ---
 
 <body content>
@@ -609,7 +610,6 @@ tags: [<tags>]
 integrations: [<integrations>]
 date_added: <YYYY-MM-DD>
 contribution_agreement_date: <ISO-8601-TIMESTAMP>
-works_with_tenable_hexa_mcp: <true|false>
 compatible_platforms: [<platforms>]
 invocation: "<invocation>"
 ---
@@ -630,7 +630,6 @@ tags: [<tags>]
 integrations: [<integrations>]
 date_added: <YYYY-MM-DD>
 contribution_agreement_date: <ISO-8601-TIMESTAMP>
-works_with_tenable_hexa_mcp: <true|false>
 transport: "<transport>"
 runtime: "<runtime>"
 auth_method: "<auth-method>"
@@ -664,7 +663,6 @@ agents_used:
     ref: "<ref>"
 date_added: <YYYY-MM-DD>
 contribution_agreement_date: <ISO-8601-TIMESTAMP>
-works_with_tenable_hexa_mcp: <true|false>
 ---
 
 <body content>
@@ -690,7 +688,6 @@ agents_used:
 logo: "<logo_url>"
 date_added: <YYYY-MM-DD>
 contribution_agreement_date: <ISO-8601-TIMESTAMP>
-works_with_tenable_hexa_mcp: <true|false>
 ---
 
 <body content>
@@ -712,7 +709,6 @@ workflow_diagram: |
   <mermaid source>
 date_added: <YYYY-MM-DD>
 contribution_agreement_date: <ISO-8601-TIMESTAMP>
-works_with_tenable_hexa_mcp: <true|false>
 ---
 
 <body content>

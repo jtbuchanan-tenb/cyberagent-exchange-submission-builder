@@ -13,6 +13,80 @@ Always confirm with the user before any git commit, push, or PR creation.
 
 ---
 
+## Phase 0: Version Check
+
+**This phase runs first, before anything else.** Compare the user's installed version of this skill against the latest version in the public repository.
+
+### Step 0.1 — Determine the installed skill location
+
+Find where this skill file lives on the user's machine:
+
+```bash
+# Check common install locations
+find ~/.claude -name "cyberagents-exchange-submit*" -o -name "SKILL.md" 2>/dev/null | head -20
+```
+
+Identify the directory containing the installed skill. This is the directory that will need updating if the version is outdated.
+
+### Step 0.2 — Compare against upstream
+
+Fetch the latest commit SHA for SKILL.md from the public repo:
+
+```bash
+gh api repos/jtbuchanan-tenb/cyberagent-exchange-submission-builder/commits?path=SKILL.md\&per_page=1 --jq '.[0].sha'
+```
+
+Get the local HEAD commit SHA for the installed skill's repo (if it's a git clone):
+
+```bash
+git -C <skill_directory> rev-parse HEAD 2>/dev/null
+```
+
+If the local directory is not a git repo (e.g., the skill was copied manually), fall back to content comparison:
+
+```bash
+# Fetch the upstream SKILL.md content
+gh api repos/jtbuchanan-tenb/cyberagent-exchange-submission-builder/contents/SKILL.md --jq '.content' | base64 -d > /tmp/upstream-skill.md
+
+# Compare with local
+diff -q <local_skill_path> /tmp/upstream-skill.md
+```
+
+### Step 0.3 — Handle outdated version
+
+**If the versions match** (same commit SHA, or diff shows no differences), continue silently to Phase 1.
+
+**If the versions differ**, inform the user:
+
+> "Your installed version of the CyberAgents Exchange submission skill is outdated. The skill changes frequently and you need the latest version to ensure your submission meets current requirements."
+>
+> "Would you like me to update it now?"
+
+**If the user agrees to update:**
+
+If the skill directory is a git clone:
+```bash
+git -C <skill_directory> pull origin main
+```
+
+If the skill was installed via a different mechanism (e.g., copied or symlinked), replace it with the latest:
+```bash
+gh api repos/jtbuchanan-tenb/cyberagent-exchange-submission-builder/contents/SKILL.md --jq '.content' | base64 -d > <local_skill_path>
+```
+
+After updating, inform the user:
+> "Updated successfully. Please re-run the skill to use the latest version."
+
+**Stop here — do not continue with the submission process.** The user needs to re-invoke the skill so the updated instructions are loaded.
+
+**If the user declines the update:**
+
+> "This skill changes frequently and an outdated version may produce submissions that don't meet current Exchange requirements. You'll need to update before continuing."
+
+**Do not proceed with the submission.** The skill cannot continue with an outdated version.
+
+---
+
 ## Phase 1: Locate & Validate the Agent Repo
 
 ### Step 1.0 — Contribution Agreement

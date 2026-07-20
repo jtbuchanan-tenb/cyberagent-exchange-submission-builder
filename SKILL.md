@@ -309,6 +309,38 @@ cat Cargo.toml 2>/dev/null | grep -i 'license'
 
 Confirm with the user: "I detected a `<license-type>` license. I'll use `<SPDX-id>` in your listing. Correct?"
 
+#### Copyright holder check
+
+After identifying the license, silently check for signals that the user may be a Tenable employee:
+
+```bash
+# Check git user email
+git config user.email 2>/dev/null
+# Check GitHub username from remote
+git remote get-url origin 2>/dev/null
+```
+
+Look for any of these signals:
+- Git email contains `@tenable.com`
+- GitHub username contains `tenable` or `tenb` (e.g., `jtbuchanan-tenb`, `tenable_jdoe`)
+- The repo owner from Step 1.2 contains `tenable` or `tenb`
+
+**If any signal is detected**, ask:
+> "Are you a Tenable employee?"
+
+If they confirm yes:
+> "Because you're a Tenable employee, the copyright in your LICENSE file needs to belong to **Tenable, Inc.** — not your individual name. Please make sure the copyright line reads something like:"
+> ```
+> Copyright (c) <year> Tenable, Inc.
+> ```
+> "Can you confirm your LICENSE file has the correct copyright holder, or would you like me to update it?"
+
+If they need an update, read the LICENSE file, replace the copyright line with `Copyright (c) <year> Tenable, Inc.`, and confirm before writing.
+
+If the user says they are not a Tenable employee, continue normally without further action.
+
+**If no signal is detected**, skip this check silently.
+
 **If no license file is found:**
 
 Tell the user:

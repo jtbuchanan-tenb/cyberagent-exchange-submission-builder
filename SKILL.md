@@ -214,6 +214,34 @@ If they don't have one, guide them to github.com/signup to create a free account
 
 After any account switch, re-run the validation from Step 1.2.
 
+### Step 1.6 — Archive policy check
+
+Scan the repo for compressed archive files:
+
+```bash
+find . -maxdepth 3 -type f \( -name "*.zip" -o -name "*.tar.gz" -o -name "*.tgz" -o -name "*.tar.bz2" -o -name "*.skill" -o -name "*.rar" -o -name "*.7z" \) -not -path "*/.git/*" -not -path "*/node_modules/*" -not -path "*/.venv/*" 2>/dev/null
+```
+
+**If archives are found**, determine whether they are the sole delivery path for the skill/agent content:
+
+1. **Archive-only structure** (BLOCKING): If the primary content (e.g., SKILL.md, source code, configuration) exists ONLY inside an archive and is not also present unpacked in the repo tree, this is a submission-blocking issue:
+
+> "I found archive file(s) in your repo: `<list>`
+>
+> The CyberAgents Exchange requires that all skill/agent content be available as unpacked files in the repository. Archives cannot be the only path to the content — users and reviewers must be able to read the files directly on GitHub without downloading and extracting anything.
+>
+> You need to extract the contents of your archive(s) to the repo root (or appropriate subdirectories) so the files are directly accessible. Would you like help restructuring?"
+
+**Do not proceed past Phase 1 until the archive-only structure is resolved.**
+
+2. **Archives as supplements** (non-blocking, advisory): If the primary content also exists unpacked (e.g., SKILL.md is at root AND a `.skill` zip exists as a convenience download), inform the user:
+
+> "I found archive file(s) in your repo: `<list>`. Since the primary content is also available unpacked, this is fine — the archives can stay as supplementary downloads. Note that the reviewer will inspect archive contents during review."
+
+Continue to Phase 2.
+
+3. **No archives found**: Continue silently.
+
 ---
 
 ## Phase 2: Interview & Generate Listing
@@ -459,6 +487,82 @@ For any field that couldn't be detected, ask the user directly. For platforms, s
 
 Note: Skills do NOT have a `framework` field — skip the framework detection from Step 2.4 for skill types.
 
+### Step 2.4-SKILL-STRUCT — Validate skill structure (only for `skill` type)
+
+After the user confirms their `compatible_platforms` selection, validate that the repo actually contains the required files for each declared platform. This prevents reviewer rejections for missing platform signals.
+
+#### SKILL.md structural validation
+
+If any declared platform requires `SKILL.md` (Claude Code, Claude Desktop, Cowork), validate its internal structure:
+
+```bash
+# Check frontmatter exists and has required fields
+head -30 SKILL.md 2>/dev/null
+```
+
+Verify:
+1. File begins with `---` (YAML frontmatter delimiter)
+2. Contains a `name:` field (non-empty)
+3. Contains a `description:` field (non-empty)
+4. Closes with `---`
+5. Body below frontmatter is substantive (not a placeholder or empty)
+
+If SKILL.md is missing or malformed:
+> "Your SKILL.md needs valid frontmatter for Claude Code/Desktop to load it. It must have this structure:"
+> ```
+> ---
+> name: your-skill-name
+> description: "One-line description of what it does"
+> ---
+>
+> # Skill content here...
+> ```
+> "Would you like me to help fix this?"
+
+#### Reference file completeness
+
+If the SKILL.md body references any files (e.g., `references/checklist.md`, `templates/something.md`):
+
+```bash
+# Extract file references from SKILL.md
+grep -oE '(references|templates)/[a-zA-Z0-9_./-]+' SKILL.md 2>/dev/null
+```
+
+Verify each referenced file actually exists in the repo. If any are missing:
+> "Your SKILL.md references these files that don't exist in the repo:"
+> - `<missing-file>`
+>
+> "The reviewer will flag these as broken references. Would you like to create them or remove the references?"
+
+#### Per-platform congruence check
+
+For each platform the user declared in `compatible_platforms`, verify the required structure exists:
+
+| Declared Platform | Required Structure | Check |
+|-------------------|--------------------|-------|
+| Claude Code | `SKILL.md` at root with `name:`/`description:` frontmatter | Already validated above |
+| Claude Desktop | `SKILL.md` at root with `name:`/`description:` frontmatter | Same as Claude Code |
+| Cowork | `SKILL.md` at root with `name:`/`description:` frontmatter | Same as Claude Code |
+| Cursor | `.cursor/rules/` dir OR `.cursorrules` file at root | `ls .cursor/rules .cursorrules 2>/dev/null` |
+| Codex | `AGENTS.md` at repo root | `ls AGENTS.md 2>/dev/null` |
+| Cline | `.cline/skills/<name>/SKILL.md` OR `.clinerules` at root | `find .cline -name "SKILL.md" 2>/dev/null; ls .clinerules 2>/dev/null` |
+| Gemini CLI | `.gemini/skills/<name>/SKILL.md` OR `GEMINI.md` at root | `find .gemini -name "SKILL.md" 2>/dev/null; ls GEMINI.md 2>/dev/null` |
+| GitHub Copilot | `.github/skills/<name>/SKILL.md` OR `.github/copilot-instructions.md` | `find .github/skills -name "SKILL.md" 2>/dev/null; ls .github/copilot-instructions.md 2>/dev/null` |
+| Windsurf | `.windsurf/skills/<name>/SKILL.md` OR `.windsurfrules` at root | `find .windsurf -name "SKILL.md" 2>/dev/null; ls .windsurfrules 2>/dev/null` |
+
+For each platform that has no matching structure:
+
+> "You declared `<platform>` as compatible, but I don't see the required file(s) for that platform:"
+> - **<platform>** needs: `<required structure>`
+>
+> "Options:"
+> 1. I can help create the platform-specific file(s)
+> 2. Remove `<platform>` from your compatible_platforms list
+>
+> "Which would you prefer?"
+
+If the user chooses to create files, guide them through it. For platforms that use SKILL.md variants in subdirectories (Cline, Gemini CLI, GitHub Copilot, Windsurf), the content can often be symlinked or copied from the root SKILL.md — offer this as a convenience.
+
 ### Step 2.4-MCP — MCP-specific fields (only for `mcp-server` type)
 
 When the user selects `mcp-server` as their type, run auto-detection for all MCP-specific fields before asking questions.
@@ -636,6 +740,53 @@ Present the full chain for review:
 > "Here's your agent chain:"
 > 1. **<name>** (<type>) — <role>
 > 2. ...
+
+### Step 2.5b — Installation instructions audit (all types)
+
+Before generating body content, verify that the README contains actionable installation instructions that are congruent with the repo structure and declared platforms.
+
+```bash
+# Check README for installation/setup sections
+grep -inE "^#{1,3}.*(install|setup|getting started|usage|how to use|quick start)" README* readme* 2>/dev/null
+```
+
+#### For skill submissions:
+
+Read the installation section and verify:
+
+1. **Instructions reference actual files that exist in the repo.** If the README says "copy SKILL.md to your skills directory" — confirm `SKILL.md` exists at root. If it says "download the .skill file" — confirm the archive exists AND that unpacked content is also available (per Step 1.6 policy).
+
+2. **Per-platform instructions exist for each declared platform.** For each platform in `compatible_platforms`, the README should explain how to install on that platform:
+   - Claude Code: how to add the skill (e.g., `/install-skill` command, manual copy to `~/.claude/skills/`)
+   - Cursor: where to place the rules file
+   - Codex: reference to AGENTS.md
+   - Cline: where to place in `.cline/skills/`
+   - Gemini CLI: where to place in `.gemini/skills/`
+   - GitHub Copilot: where to place in `.github/skills/`
+   - Windsurf: where to place in `.windsurf/skills/`
+
+3. **No references to non-existent files or commands.** If the README says "run `npm install`" but there's no `package.json`, flag it.
+
+#### For all submission types:
+
+Verify the README has:
+- Clear prerequisites (dependencies, API keys needed, etc.)
+- At least one concrete command or action the user can take to get started
+- No references to files/paths that don't exist in the repo
+
+**If issues are found:**
+
+> "I found some issues with your installation instructions that the reviewer will flag:"
+> - <issue 1>
+> - <issue 2>
+>
+> "Would you like help fixing these? Clear installation instructions are required for the Exchange."
+
+Guide the user through fixes. If the README has no installation section at all:
+
+> "Your README doesn't have an installation/setup section. The Exchange requires clear instructions for how users can get started with your <type>. Would you like me to draft one based on your repo structure?"
+
+**Do not proceed to body content until installation instructions are present and congruent.**
 
 ### Step 2.6 — Body content
 

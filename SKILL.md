@@ -348,7 +348,7 @@ Tell the user:
 >
 > I recommend the **MIT License** — it's the most permissive and widely used license for open source tools. It lets anyone use, modify, and distribute your work with minimal restrictions.
 >
-> Would you like me to create a LICENSE file with the MIT license? Or would you prefer a different license? (Options: MIT, Apache-2.0, GPL-3.0, BSD-2-Clause)"
+> Would you like me to create a LICENSE file with the MIT license? Or would you prefer a different license? (Options: MIT, Apache-2.0)"
 
 If the user agrees to MIT (or picks another), create the LICENSE file:
 - Use the user's name (from their GitHub profile or ask them) and the current year

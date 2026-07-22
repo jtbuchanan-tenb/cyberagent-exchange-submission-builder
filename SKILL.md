@@ -372,6 +372,57 @@ Present the options:
 
 After type selection, fetch the appropriate template (agent-template.md for agents, skill-template.md for skills, mcp-server-template.md for MCP servers, playbook-template.md or n8n-playbook-template.md for playbooks).
 
+### Step 2.2a — Subagent detection and type correction
+
+**Before proceeding with the selected type**, scan the repository for Claude Code subagent definitions:
+
+```bash
+# Check for .claude/agents/ subagent definitions
+find . -path "*/.claude/agents/*.md" -not -path "*/.git/*" 2>/dev/null
+
+# Also check for .claude/agents/ directory existence
+ls -la .claude/agents/ 2>/dev/null
+```
+
+**If `.claude/agents/*.md` files are found AND the user selected "agent" type:**
+
+This is a Claude Code subagent definition, not a standalone agent. On the CyberAgents Exchange, subagent definitions are listed as **skills** because they extend an AI coding assistant (Claude Code) rather than running independently. They must be submitted with a `SKILL.md` at the repo root.
+
+Inform the user:
+
+> "I found a Claude Code subagent definition in your repo (`.claude/agents/<name>.md`). On the CyberAgents Exchange, subagent definitions like this are listed as **skills**, not agents — because they extend Claude Code rather than running as standalone programs.
+>
+> To submit this to the Exchange, your repo needs to be restructured as a Claude Code skill with a `SKILL.md` file at the root. This is what allows Claude Code users to install and invoke your subagent as a skill.
+>
+> I'll switch your listing type to **skill** and help you create the required `SKILL.md`. Sound good?"
+
+**If the user agrees**, change the type to `skill` and proceed to help them create a `SKILL.md`:
+
+1. Read the existing subagent definition to understand its purpose and instructions:
+```bash
+cat .claude/agents/<name>.md
+```
+
+2. Generate a `SKILL.md` that wraps the subagent's functionality. The SKILL.md should:
+   - Have proper YAML frontmatter with `name:` and `description:` fields
+   - Contain the skill instructions (which can reference or delegate to the subagent definition)
+   - Be placed at the repo root
+
+3. Present the proposed `SKILL.md` to the user for review and approval before writing it.
+
+4. After creating SKILL.md, confirm before committing:
+   > "I've created `SKILL.md` at the repo root. Ready to commit this? (The subagent definition in `.claude/agents/` stays as-is — SKILL.md provides the Exchange-compatible entry point.)"
+
+**If the user disagrees or insists on "agent" type**, explain:
+
+> "The Exchange requires that Claude Code subagent definitions be submitted as skills. A standalone agent listing is for programs that run independently (their own process, CLI, or service). Since yours requires Claude Code to run and is installed into a user's `.claude/agents/` directory, it falls under the skill category.
+>
+> Would you like me to help restructure it as a skill, or would you prefer to stop here and revisit later?"
+
+**Do not proceed with an "agent" type listing if the repo's primary artifact is a `.claude/agents/*.md` subagent definition.**
+
+**If no subagent definitions are found**, or the user selected a type other than "agent", continue normally.
+
 ### Step 2.2b — Playbook subtype selection (only for playbooks)
 
 If the user selected "playbook" in Step 2.2, ask:

@@ -328,16 +328,23 @@ Look for any of these signals:
 **If any signal is detected**, ask:
 > "Are you a Tenable employee?"
 
+If the user says they are not a Tenable employee, continue normally without further action.
+
 If they confirm yes:
-> "Because you're a Tenable employee, the copyright in your LICENSE file needs to belong to **Tenable, Inc.** — not your individual name. Please make sure the copyright line reads something like:"
+> "Because you're a Tenable employee, the copyright in your LICENSE file needs to belong to **Tenable, Inc.** — not your individual name."
+
+Then read the LICENSE file and check whether the copyright line already names `Tenable, Inc.` (case-insensitive match on "Tenable"). If it does, continue to the next step.
+
+If the copyright line does **not** name Tenable, Inc., offer to fix it:
+> "Your LICENSE currently has: `<current copyright line>`. I'll update it to:"
 > ```
 > Copyright (c) <year> Tenable, Inc.
 > ```
-> "Can you confirm your LICENSE file has the correct copyright holder, or would you like me to update it?"
+> "Want me to make that change?"
 
-If they need an update, read the LICENSE file, replace the copyright line with `Copyright (c) <year> Tenable, Inc.`, and confirm before writing.
+If they accept, replace the copyright line with `Copyright (c) <year> Tenable, Inc.` and commit the change. Then re-read the LICENSE to confirm the fix before continuing.
 
-If the user says they are not a Tenable employee, continue normally without further action.
+**This is a hard gate.** Do NOT proceed to the next step until the LICENSE copyright line names `Tenable, Inc.`. If the user declines the update, explain that Tenable employees must assign copyright to Tenable, Inc. and ask them to fix it manually before continuing. Do not proceed past this check until the copyright is correct.
 
 **If no signal is detected**, skip this check silently.
 

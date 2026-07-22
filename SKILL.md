@@ -1034,22 +1034,13 @@ Show the complete file to the user:
 
 Ask for any final changes. Iterate until the user approves.
 
-### Step 2.8 — Commit listing to agent repo
+### Step 2.8 — Finalize listing
 
 Re-read the contributing checklist fetched at the start of Phase 2 (from `docs/contributing_checklist.md` in the exchange repo) and verify the listing passes all relevant Tier 1 checks before proceeding.
 
-Determine the filename: generate a slug from the `name` field (lowercase, replace spaces and special characters with hyphens, strip leading/trailing hyphens).
+Determine the filename: generate a slug from the `name` field (lowercase, replace spaces and special characters with hyphens, strip leading/trailing hyphens). This slug will be used as the listing filename in the exchange repo (e.g., `<slug>.md`).
 
-Write the listing file to the repo root (e.g., `<slug>.md`).
-
-**Confirm before git action:**
-> "Ready to commit `<slug>.md` to your repo and push to GitHub. Proceed? (This will commit and push to your `<branch>` branch)"
-
-```bash
-git add <slug>.md
-git commit -m "Add CyberAgents Exchange listing"
-git push
-```
+Hold the listing content in memory — it will be written directly to the exchange repo fork in Phase 3.
 
 ---
 
@@ -1124,14 +1115,17 @@ Determine the target directory:
 
 Check for filename conflicts:
 ```bash
-ls agents/<slug>.md mcp-servers/<slug>.md playbooks/<slug>.md 2>/dev/null
+ls agents/<slug>.md skills/<slug>.md mcp-servers/<slug>.md playbooks/<slug>.md 2>/dev/null
 ```
 
 If a conflict exists, inform the user and ask them to choose a different name.
 
-Copy the listing file:
+Write the listing file directly to the target directory in the exchange fork:
 ```bash
-cp <path-to-listing-in-agent-repo>/<slug>.md <target-directory>/<slug>.md
+# Write the listing content (held in memory from Step 2.8) to the target directory
+cat > <target-directory>/<slug>.md << 'LISTING_EOF'
+<listing content>
+LISTING_EOF
 ```
 
 ### Step 3.5 — Update validator vocabulary (if needed)

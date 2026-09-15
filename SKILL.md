@@ -260,6 +260,7 @@ gh api repos/tenable/cyberagents-exchange/contents/docs/contributing_checklist.m
 
 Parse the Pydantic models in `validator.py` to extract valid values from `Literal[...]` type annotations:
 - **Integrations** — from `Entry.integrations` field's Literal values
+- **Domains** — from `Entry.domains` field's Literal values (15 values; a closed taxonomy — see Step 2.4c)
 - **Tiers** — from `Entry.tier` field's Literal values
 - **Platforms** — from `Skill.compatible_platforms` field's Literal values
 - **Transports** — from `MCPServer.transport` field's Literal values
@@ -493,7 +494,7 @@ If no fuzzy match is found and the user confirms the value is correct (e.g., a n
 
 If the user agrees, track the new value and which field it belongs to. In Phase 3 (Step 3.4), the skill will apply these vocabulary updates to `validator.py` in the exchange repo clone before committing.
 
-This same handling applies to any controlled vocabulary field (platforms, clients, runtimes, transports, auth methods) where the user needs a value that doesn't yet exist.
+This same handling applies to any controlled vocabulary field (platforms, clients, runtimes, transports, auth methods) where the user needs a value that doesn't yet exist. **`domains` is the exception** — it is a closed taxonomy and never gets a `validator.py` addition. See Step 2.4c.
 
 ### Step 2.4b — Tenable Hexa MCP detection
 
@@ -517,6 +518,55 @@ grep -ri "hexa.mcp\|hexa-mcp" --include="*.py" --include="*.ts" --include="*.js"
 ```
 
 If repo evidence supports Hexa MCP usage AND the user confirms, set `works_with_tenable_hexa_mcp: true` **and** add `"Tenable Hexa AI MCP"` to the `integrations` list (if not already present). The validator enforces that `works_with_tenable_hexa_mcp: true` requires the `"Tenable Hexa AI MCP"` integration — they must always appear together. If the user says they use other Tenable APIs (or the evidence doesn't support Hexa MCP), omit `works_with_tenable_hexa_mcp` from the listing entirely — do not include it as `false`.
+
+### Step 2.4c — Domains
+
+`domains` places the listing in the Exchange's security domain taxonomy. It drives the domain filters on the browse page, so a listing submitted without it is invisible to every one of those filters and a maintainer has to fill the field in during review. The schema treats it as optional — which is exactly why it goes missing. Ask for it every time.
+
+**The taxonomy is closed.** The 15 values below are the only legal ones. The Exchange website mirrors this list to build its filter labels, so adding a domain takes a coordinated change across two repositories. Do **not** offer to add a value to `validator.py` for this field, and never invent a slug. If the user wants a domain that doesn't exist, have them pick the closest existing value now and [open an issue](https://github.com/tenable/cyberagents-exchange/issues) to propose the new one.
+
+| Value | Label | What belongs here |
+|-------|-------|-------------------|
+| `ai-security` | AI Security | Security *of* AI systems: agent and MCP security, AI-SPM, prompt-injection testing. Not "this is an AI agent" — nearly everything here is. |
+| `application-security` | Application Security | SAST/DAST, dependency and supply-chain risk, secrets in code, secure SDLC, API security. |
+| `cloud-security` | Cloud Security | CSPM/CNAPP, cloud misconfiguration, container and Kubernetes posture, cloud attack paths. |
+| `cryptography-pki` | Cryptography & PKI | TLS and certificate posture, post-quantum readiness, key management. |
+| `data-security` | Data Security | Data discovery and classification, DLP, database security, sensitive-data exposure. |
+| `email-collaboration-security` | Email & Collaboration Security | Phishing analysis, email gateway and header forensics, Slack/Teams/SaaS collaboration risk. |
+| `governance-risk-compliance` | Governance, Risk & Compliance | Framework and benchmark mapping, audit evidence, policy, risk quantification, reporting to leadership. |
+| `identity-access` | Identity & Access | IAM and entitlement review, privilege escalation paths, MFA and SSO posture, Active Directory and Entra ID. |
+| `network-security` | Network Security | Firewall and segmentation review, network device configuration, traffic and perimeter analysis. |
+| `ot-iot-security` | OT/IoT Security | ICS/SCADA, medical and embedded devices, industrial protocols. |
+| `platform-operations` | Platform Operations | **Not a security domain.** Platform health checks, licensing, scan operations, exports and reporting, API connectors, onboarding and setup helpers. Use it when the main job is operating or administering a security platform rather than performing a security function. |
+| `security-awareness` | Security Awareness | Training content, phishing simulation, secure-behavior coaching. |
+| `security-operations` | Security Operations | SIEM/EDR/NDR work, threat hunting, detection engineering, incident response, malware analysis, insider threat. |
+| `threat-intelligence` | Threat Intelligence | IOC and actor research, CVE and exploit intelligence enrichment, threat feeds, attribution. |
+| `vulnerability-management` | Vulnerability Management | Core VM workflows only: scanning, prioritization, remediation tracking, exposure and risk scoring for known vulnerabilities. |
+
+#### Propose, then confirm
+
+Don't hand the user 15 rows and make them read. Infer 1-2 candidates from repo context — `description`, `name`, README content, and `tags` — weighting the `description` most heavily, since `tags` are unconstrained and noisy. Then ask:
+
+> "Based on what your project does, I'd file this under **<Primary Label>** (`<primary-slug>`)<, with **<Secondary Label>** (`<secondary-slug>`) as a secondary>. The first value is the primary domain — it's what the Exchange leads with when it displays and filters your listing.
+>
+> Keep it, swap it, or add a second? Here's the full list if you want to browse: `[<all 15 values>]`"
+
+The user makes the call. Never assign domains silently because the inference felt obvious, and never drop the field because the user didn't volunteer one.
+
+Cardinality rules the validator enforces:
+- One or two values, no duplicates.
+- The **first value is primary** — the domain the listing's main job belongs to, not every domain it touches.
+- Add a second value only when the listing genuinely straddles two domains. One value is the common case.
+
+#### Buckets that get mis-picked
+
+- `platform-operations` — **not a security domain.** Reach for it when the main job is operating or administering a security platform (health checks, licensing, scan operations, exports and reporting, API connectors, onboarding and setup helpers) rather than performing a security function.
+- `vulnerability-management` — core VM workflows only. Never a default; use it only when VM is genuinely the listing's primary function.
+- `ai-security` — security *of* AI systems, not "this is an AI agent." Nearly every listing on the Exchange is an AI agent; that fact alone never earns this domain.
+- `security-operations` — the broad SOC bucket: SIEM/EDR/NDR work, threat hunting, detection engineering, incident response, malware analysis, insider threat.
+- `cryptography-pki` — TLS and certificate posture, post-quantum readiness, key management.
+
+Store the confirmed list. Step 2.7 emits it immediately after `tags` and before `integrations` — the field order every merged listing uses.
 
 ### Step 2.4-SKILL — Skill-specific fields (only for `skill` type)
 
@@ -894,6 +944,8 @@ Assemble the complete listing markdown file using the fetched template as the st
 
 **Note:** Only include `works_with_tenable_hexa_mcp: true` if Step 2.4b confirmed Hexa MCP usage. If not applicable or false, omit the field entirely.
 
+**Field order matters:** `domains` goes immediately after `tags` and before `integrations` in every type. That's the order every merged listing uses — keep it.
+
 For agents:
 ```yaml
 ---
@@ -904,6 +956,7 @@ description: "<description>"
 license: "<spdx-id>"
 tier: "contributed"
 tags: [<tags>]
+domains: [<domains>]
 integrations: [<integrations>]
 date_added: <YYYY-MM-DD>
 contribution_agreement_date: <ISO-8601-TIMESTAMP>
@@ -922,6 +975,7 @@ description: "<description>"
 license: "<spdx-id>"
 tier: "contributed"
 tags: [<tags>]
+domains: [<domains>]
 integrations: [<integrations>]
 date_added: <YYYY-MM-DD>
 contribution_agreement_date: <ISO-8601-TIMESTAMP>
@@ -942,6 +996,7 @@ description: "<description>"
 license: "<spdx-id>"
 tier: "contributed"
 tags: [<tags>]
+domains: [<domains>]
 integrations: [<integrations>]
 date_added: <YYYY-MM-DD>
 contribution_agreement_date: <ISO-8601-TIMESTAMP>
@@ -970,6 +1025,7 @@ description: "<description>"
 license: "<spdx-id>"
 tier: "contributed"
 tags: [<tags>]
+domains: [<domains>]
 integrations: [<integrations>]
 agents_used:
   - name: "<name>"
@@ -994,6 +1050,7 @@ description: "<description>"
 license: "<spdx-id>"
 tier: "contributed"
 tags: [<tags>]
+domains: [<domains>]
 integrations: [<integrations>]
 agents_used:
   - name: "<name>"
@@ -1019,6 +1076,7 @@ description: "<description>"
 license: "<spdx-id>"
 tier: "contributed"
 tags: [<tags>]
+domains: [<domains>]
 integrations: [<integrations>]
 workflow_diagram: |
   <mermaid source>
@@ -1145,6 +1203,8 @@ If the user requested new vocabulary values during Phase 2, apply them now to `v
 3. Inform the user:
    > "I've added `<value>` to the `<field>` vocabulary in `validator.py`. The maintainers will review this alongside your listing."
 
+**Never touch `Entry.domains`.** The domain taxonomy is closed (see Step 2.4c) — it is mirrored by the Exchange website, so it is not a field a submission PR may extend. If the user wanted a domain that doesn't exist, the listing carries the closest existing value and the new one gets proposed in a separate issue.
+
 If no vocabulary updates are needed, skip this step.
 
 ### Step 3.6 — Commit, push, and create PR
@@ -1189,6 +1249,7 @@ gh pr create \
 - [x] Listing file passes schema validation
 - [x] Listing placed in correct directory (<target-directory>/)
 - [x] Filename is a valid slug (<slug>.md)
+- [x] `domains` set (1-2 values from the taxonomy, primary first)
 
 ### Vocabulary Updates (if applicable)
 - Added `<value>` to `<field>` in `validator.py`"

@@ -77,6 +77,7 @@ The skill auto-detects as much as possible from your repo, but will ask you abou
 - **Type** — Is this an agent, skill, tool, MCP server, or playbook?
 - **Description** — A one-line summary of what your project does
 - **Tags** — Keywords for discoverability (e.g., `vuln-management`, `incident-response`)
+- **Domains** — Which of the Exchange's 15 security domains your project belongs to; the skill proposes one or two from your description and you confirm or change them (the first is the primary domain, and it drives the Exchange's domain filters)
 - **Framework** — What your agent is built with (e.g., Claude Code SKILL, LangChain, MCP SDK)
 - **Integrations** — Which platforms it works with (e.g., Tenable, CrowdStrike, Splunk)
 
@@ -90,6 +91,8 @@ For **playbooks**, you'll select a subtype and provide additional details:
 - **n8n** — An n8n workflow; the skill reads your `workflow.json` and generates a Mermaid diagram automatically
 
 If your listing needs a value that isn't in the Exchange's current vocabulary (e.g., a new integration vendor), the skill will add it to the validator for you and include the update in your submission PR.
+
+The one exception is **domains** — that taxonomy is closed, because the Exchange website mirrors it to build its browse filters. The skill will always pick from the existing 15 values; proposing a new domain is a separate GitHub issue on the Exchange repo.
 
 ## Supported Listing Types
 

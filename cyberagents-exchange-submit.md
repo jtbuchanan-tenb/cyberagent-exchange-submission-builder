@@ -7,6 +7,7 @@ license: "MIT"
 type: "skill"
 tier: "contributed"
 tags: ["claude-code", "exchange", "submission", "automation", "cybersecurity"]
+domains: ["platform-operations"]
 framework: "Claude Code SKILL"
 integrations: ["Anthropic"]
 date_added: 2026-05-28

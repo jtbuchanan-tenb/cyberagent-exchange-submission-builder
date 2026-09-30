@@ -6,7 +6,7 @@ A Claude Code skill that walks you through submitting your cybersecurity AI agen
 
 Instead of manually following the Exchange contribution guide — cloning repos, filling out templates, validating fields — this skill handles it all interactively. Run one command and it will:
 
-1. **Validate your repo** — checks that your agent code is pushed to a public GitHub repo, has a README, has an open source license, and scans for accidentally committed secrets
+1. **Validate your repo** — checks that your agent code is pushed to GitHub, has a README and an open source license, and scans the working tree *and full git history* for accidentally committed secrets before the repo is made public
 2. **Generate your listing** — interviews you about your agent, auto-detects what it can from your code, and assembles the listing metadata file
 3. **Submit your pull request** — clones the Exchange content repo, creates a branch, places your listing, and opens a PR for review
 

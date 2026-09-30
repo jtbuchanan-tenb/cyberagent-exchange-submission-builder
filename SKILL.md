@@ -147,9 +147,9 @@ git remote get-url origin
 
 Parse the owner and repo name from the URL. Handle both SSH (`git@github.com:owner/repo.git`) and HTTPS (`https://github.com/owner/repo`) formats.
 
-### Step 1.3 — Verify pushed to GitHub and public
+### Step 1.3 — Verify pushed to GitHub, then scan for credentials
 
-Confirm the remote repo exists and is accessible:
+First confirm the remote repo exists and is accessible, and record its current visibility:
 ```bash
 gh repo view <owner>/<repo> --json name,url,visibility
 ```
@@ -160,20 +160,23 @@ If this fails, the repo either doesn't exist on GitHub yet or isn't pushed. Guid
 > git push -u origin main
 > ```
 
-If the repo is **private** (visibility is not "PUBLIC"), warn the user:
-> "Your repo is currently private. The CyberAgents Exchange requires all listed projects to be in public repositories so that users can access and evaluate your work.
->
-> You can make it public in your repo settings, or I can do it for you:"
-> ```
-> gh repo edit <owner>/<repo> --visibility public
-> ```
-> "Would you like me to make it public now, or would you prefer to do it yourself?"
+**Do not change the repo's visibility yet.** If the repo is private, it stays private until the credential scan in this step completes cleanly. Making a private repo public publishes every commit reachable from every branch and tag, so a secret that is scrubbed from the current tree but still present in history becomes live on GitHub the moment visibility flips — and it must then be treated as compromised and rotated, not merely deleted.
 
-**Do not proceed past Phase 1 until the repo is public.** Re-check after the user confirms.
+#### 1.3a — Prefer a maintained, history-aware scanner
 
-### Step 1.4 — Scan for secrets
+If a real secret scanner is installed, use it — it covers full git history and has far better coverage than pattern matching:
 
-Before proceeding, scan the repo for accidentally committed secrets:
+```bash
+# gitleaks (scans all reachable history by default; --redact hides secret values)
+command -v gitleaks >/dev/null && gitleaks detect --redact --no-banner --exit-code 0
+
+# or trufflehog
+command -v trufflehog >/dev/null && trufflehog git file://. --no-update --results=verified,unknown
+```
+
+If neither is installed, mention that installing one (`brew install gitleaks`) gives stronger coverage, then fall back to the manual checks below. Do not install tools without asking.
+
+#### 1.3b — Manual scan: current working tree
 
 ```bash
 # Check for common secret file patterns
@@ -183,25 +186,50 @@ ls .env .env.local .env.production .env.* credentials.json service-account*.json
 grep -rn --include="*.py" --include="*.ts" --include="*.js" --include="*.go" --include="*.rs" --include="*.yaml" --include="*.yml" --include="*.toml" --include="*.json" -E '(api[_-]?key|api[_-]?secret|auth[_-]?token|access[_-]?token|secret[_-]?key|private[_-]?key|password)\s*[:=]\s*["\x27][A-Za-z0-9+/=_-]{16,}' . 2>/dev/null | grep -v node_modules | grep -v .venv | grep -v __pycache__
 
 # Check for AWS/cloud credential patterns
-grep -rn --include="*.py" --include="*.ts" --include="*.js" --include="*.go" --include="*.env*" -E '(AKIA[0-9A-Z]{16}|sk-[a-zA-Z0-9]{20,}|ghp_[a-zA-Z0-9]{36}|gho_[a-zA-Z0-9]{36}|xox[bpas]-[a-zA-Z0-9-]+)' . 2>/dev/null | grep -v node_modules | grep -v .venv
+grep -rn --include="*.py" --include="*.ts" --include="*.js" --include="*.go" --include="*.env*" -E '(AKIA[0-9A-Z]{16}|ASIA[0-9A-Z]{16}|sk-[A-Za-z0-9]{20,}|gh[pousr]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{22,}|xox[bpasr]-[A-Za-z0-9-]+|AIza[0-9A-Za-z_-]{35}|-----BEGIN [A-Z ]*PRIVATE KEY-----)' . 2>/dev/null | grep -v node_modules | grep -v .venv
 ```
 
-**If any matches are found**, report them to the user:
-> "I found what appear to be secrets or credentials in your repository:"
-> - `<file>:<line>` — <description of what was found>
+#### 1.3c — Manual scan: reachable git history
+
+A clean working tree proves nothing about what is in history. Scan every reachable commit:
+
+```bash
+# Secret-bearing filenames that ever existed on any branch or tag
+git rev-list --all --objects | \
+  grep -iE '(^|/|[[:space:]])(\.env(\.[^/]*)?|\.envrc|credentials\.json|service-account[^/]*\.json|id_rsa|id_ed25519|[^/]*\.(pem|p12|pfx|jks|keystore|ppk)|[^/]*secrets?[^/]*\.(ya?ml|json|toml|ini))$'
+
+# High-confidence token patterns across the full history of every branch
+git log --all --full-history -p --no-color | \
+  grep -nE '(AKIA[0-9A-Z]{16}|ASIA[0-9A-Z]{16}|sk-[A-Za-z0-9]{20,}|gh[pousr]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{22,}|xox[bpasr]-[A-Za-z0-9-]+|AIza[0-9A-Za-z_-]{35}|-----BEGIN [A-Z ]*PRIVATE KEY-----)'
+```
+
+For a large repo these can be slow. If `git rev-list --all --count` is in the thousands and the full scan doesn't finish in a reasonable time, narrow it (for example `git log --all -p -n 500`) and **tell the user the scan was partial and which range it covered** — never present a truncated scan as a clean bill of health.
+
+#### 1.3d — Report findings and gate
+
+**Always redact the matched value.** Report the location and the kind of credential (`AWS access key id`, `GitHub PAT`, `private key block`), never the secret itself — the transcript is another place it can leak.
+
+**If anything is found**, report it grouped by where it lives, because the fixes differ:
+> "I found what appear to be credentials in your repository. Your repo is still **private**, so nothing is exposed yet."
 >
-> "Since this repo needs to be public for the Exchange, these should be removed before proceeding. Common fixes:"
+> **In the current files:**
+> - `<file>:<line>` — <kind of credential, value redacted>
+>
+> **In git history only (not in the current tree):**
+> - commit `<short sha>`, `<file>` — <kind of credential, value redacted>
+>
+> "These need to be resolved before the repo goes public:"
 > - Move secrets to environment variables and add the files to `.gitignore`
-> - Use `git filter-branch` or [BFG Repo-Cleaner](https://reclaimtheweb.com/bfg-repo-cleaner/) to purge them from git history
-> - Rotate any exposed credentials immediately
+> - For anything in history, deleting the file is not enough — purge it with [git-filter-repo](https://github.com/newren/git-filter-repo) or [BFG Repo-Cleaner](https://reclaimtheweb.com/bfg-repo-cleaner/), then force-push
+> - Rotate any credential that was ever committed, even in a private repo — collaborators, forks, CI logs, and local clones may already have it
 >
 > "Would you like help resolving these?"
 
-**Do not proceed past Phase 1 until the user has addressed the findings or confirmed they are false positives** (e.g., example/placeholder values, test fixtures).
+**Do not proceed past this step until the user has addressed the findings or confirmed they are false positives** (e.g., example/placeholder values, test fixtures). Record what the user waived — it belongs in the pre-publication confirmation in Step 1.5.
 
-If no matches are found, continue silently.
+If nothing is found, say so briefly, including what the scan covered (tool used, working tree + N commits of history), and continue.
 
-### Step 1.5 — Check account type (EMU detection)
+### Step 1.4 — Check account type (EMU detection)
 
 Inspect the owner from the remote URL. EMU (Enterprise Managed User) accounts follow the pattern `<enterprise>_<username>` with an **underscore** (e.g., `tenable_jbuchanan`). Hyphens in usernames (e.g., `jtbuchanan-tenb`) are normal personal accounts — do NOT flag these.
 
@@ -212,7 +240,34 @@ Ask: "Do you have a personal GitHub account? If so, what's the username? I can h
 
 If they don't have one, guide them to github.com/signup to create a free account.
 
-After any account switch, re-run the validation from Step 1.2.
+If an account switch is needed, **do not make the current repo public** — it is being abandoned. After the switch, re-run the validation from Step 1.2 onward: the new remote is a different repository, so its history has not been scanned and Step 1.3 must run against it before Step 1.5.
+
+### Step 1.5 — Make the repo public
+
+Only reach this step once Step 1.3 has finished with no unresolved credential findings and Step 1.4 has confirmed the repo lives under an account that can actually submit to the Exchange. Publishing a repo that is about to be moved to a different account exposes its history for nothing.
+
+If the repo is already public, continue.
+
+If the repo is **private**, explain and ask before changing anything:
+> "Your repo is currently private. The CyberAgents Exchange requires all listed projects to be in public repositories so that users can access and evaluate your work.
+>
+> Before making it public, here's the credential scan result:
+> - **Scanner:** <gitleaks / trufflehog / manual pattern scan>
+> - **Coverage:** current working tree + <N> commits across all branches and tags<, or note the partial range>
+> - **Findings:** none / <N> resolved by the user / <N> confirmed false positives by the user
+> - **Not covered:** <e.g. binary blobs, LFS objects, submodule contents, history beyond the scanned range>
+>
+> Making this repo public publishes all of that history irreversibly — anything still in it should be considered exposed and rotated.
+>
+> You can make it public in your repo settings, or I can do it for you:"
+> ```
+> gh repo edit <owner>/<repo> --visibility public
+> ```
+> "Would you like me to make it public now, or would you prefer to do it yourself?"
+
+Run the `gh repo edit` command only on explicit confirmation. If the user is unsure, leave the repo private and stop — the submission can resume later.
+
+**Do not proceed past Phase 1 until the repo is public.** Re-check with `gh repo view` after the change.
 
 ### Step 1.6 — Archive policy check
 

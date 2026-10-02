@@ -519,6 +519,20 @@ Determine these fields automatically and present them for confirmation:
 | `tier` | Always `"contributed"` — hardcoded, do not ask |
 | `contribution_agreement_date` | The ISO 8601 timestamp captured in Step 1.0 when the user accepted the Contribution Agreement |
 
+**Three fields are Tenable-set and must never be emitted.** `partner_contribution`, `vetted_on` and
+`vetted_commit_sha` are written by Tenable during review, not by contributors — `CONTRIBUTING.md` in
+the exchange repo records this. Do not detect them, do not ask about them, and do not include them in
+the generated listing, even if the repository or the user supplies a value.
+
+- `vetted_on` / `vetted_commit_sha` — a submission carrying either **fails validation outright**.
+  `validator.py`'s `vetted_review_fields_match_tier` validator rejects either field on a listing whose
+  `tier` is not `vetted`, and requires both on one that is.
+- `partner_contribution` — passes validation at any tier, so nothing upstream catches it. The reviewer
+  skill removes a submitter-supplied value.
+
+This is the same reason `tier` above is hardcoded: promotion to `vetted` is a Tenable-initiated review
+of a listing already live at the contributed tier, never a submission path.
+
 Present these to the user:
 > "Here's what I've detected from your repo. Please confirm or correct:"
 > - **Name:** <detected>
